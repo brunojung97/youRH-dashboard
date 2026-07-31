@@ -623,7 +623,7 @@
   <div id="modal-add-user" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center;">
     <div style="background:#161616;border:1px solid #2e2e2e;border-radius:16px;padding:36px 32px;width:100%;max-width:440px;box-shadow:0 24px 64px rgba(0,0,0,.6);">
       <h2 style="font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:24px;">Novo usuário</h2>
-      <div id="add-user-error" style="display:none;background:rgba(252,129,129,.1);border:1px solid rgba(252,129,129,.3);border-radius:8px;padding:10px 14px;font-size:0.83rem;color:#fc8181;margin-bottom:14px;"></div>
+      <div id="nu-msg" style="display:none;background:rgba(252,129,129,.1);border:1px solid rgba(252,129,129,.3);border-radius:8px;padding:10px 14px;font-size:0.83rem;color:#fc8181;margin-bottom:14px;"></div>
 
       <div style="margin-bottom:14px;">
         <label style="display:block;font-size:0.72rem;color:#9a9a9a;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Nome completo</label>
@@ -652,7 +652,7 @@
       </div>
       <div style="margin-bottom:22px;">
         <label style="display:block;font-size:0.72rem;color:#9a9a9a;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Senha inicial</label>
-        <input id="nu-password" type="password" placeholder="Mínimo 6 caracteres" style="width:100%;background:#1c1c1c;border:1px solid #2e2e2e;border-radius:7px;padding:10px 12px;color:#e2e8f0;font-size:0.88rem;font-family:inherit;outline:none;">
+        <input id="nu-senha" type="password" placeholder="Mínimo 6 caracteres" style="width:100%;background:#1c1c1c;border:1px solid #2e2e2e;border-radius:7px;padding:10px 12px;color:#e2e8f0;font-size:0.88rem;font-family:inherit;outline:none;">
       </div>
       <div style="display:flex;gap:10px;">
         <button onclick="closeAddUser()" style="flex:1;background:transparent;border:1px solid #2e2e2e;color:#9a9a9a;border-radius:7px;padding:10px;font-size:0.88rem;cursor:pointer;font-family:inherit;">Cancelar</button>
@@ -1380,7 +1380,8 @@ function openAddUser() {
   document.getElementById('nu-role').value = 'colaborador';
   document.getElementById('nu-setor').value = '';
   document.getElementById('nu-senha').value = '';
-  document.getElementById('nu-msg').textContent = '';
+  const _m = document.getElementById('nu-msg');
+  _m.textContent = ''; _m.style.display = 'none';
   toggleSetorField();
   document.getElementById('modal-add-user').style.display = 'flex';
 }
@@ -1403,19 +1404,16 @@ async function submitNewUser() {
   const setor = document.getElementById('nu-setor').value.trim();
   const senha = document.getElementById('nu-senha').value;
 
-  if (!nome || !email || !senha) {
-    msg.style.color = '#fc8181';
-    msg.textContent = 'Preencha nome, e-mail e senha.';
-    return;
-  }
-  if ((role === 'gestor' || role === 'colaborador') && !setor) {
-    msg.style.color = '#fc8181';
-    msg.textContent = 'Informe o setor para este papel.';
-    return;
+  function showMsg(text, color) {
+    msg.style.color = color || '#fc8181';
+    msg.textContent = text;
+    msg.style.display = 'block';
   }
 
-  msg.style.color = '#aaa';
-  msg.textContent = 'Salvando...';
+  if (!nome || !email || !senha) { showMsg('Preencha nome, e-mail e senha.'); return; }
+  if ((role === 'gestor' || role === 'colaborador') && !setor) { showMsg('Informe o setor para este papel.'); return; }
+
+  showMsg('Salvando...', '#aaa');
   try {
     const res = await fetch('/api/admin/users', {
       method: 'POST',
@@ -1427,8 +1425,7 @@ async function submitNewUser() {
     closeAddUser();
     loadUsersTable();
   } catch(e) {
-    msg.style.color = '#fc8181';
-    msg.textContent = 'Erro: ' + e.message;
+    showMsg('Erro: ' + e.message);
   }
 }
 
