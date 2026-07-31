@@ -17,8 +17,9 @@ const PORT = process.env.PORT || 3000;
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 const JWT_SECRET      = process.env.JWT_SECRET;
 const SPREADSHEET_ID  = process.env.SPREADSHEET_ID || '1kjwjwQF8KL2ijEt9jB-UkWYLmLTZ5XuF6k44sAFzAgU';
-const SHEET_NAME      = process.env.SHEET_NAME || 'Sheet1';  // nome da aba na planilha
-const CACHE_TTL_MS    = 5 * 60 * 1000;                       // cache de 5 min
+const SHEET_NAME      = process.env.SHEET_NAME || 'Sheet1';
+const USERS_SHEET     = 'Usuarios';   // aba de gestão de usuários na planilha
+const CACHE_TTL_MS    = 5 * 60 * 1000;
 
 if (!JWT_SECRET) {
   console.error('❌  Variável JWT_SECRET não definida. Configure-a no Railway antes de iniciar.');
@@ -26,7 +27,7 @@ if (!JWT_SECRET) {
 }
 
 // ─── USUÁRIOS ─────────────────────────────────────────────────────────────────
-// Formato JSON em USERS env var — ver .env.example
+// Carregado do env var inicialmente; substituído pela planilha no startup
 let USERS = [];
 try {
   USERS = JSON.parse(process.env.USERS || '[]');
@@ -39,7 +40,23 @@ try {
 app.use(express.json());
 app.use(cookieParser());
 
-// ─── CACHE GOOGLE SHEETS ──────────────────────────────────────────────────────
+// ─── GOOGLE SHEETS HELPER ─────────────────────────────────────────────────────
+function getSheets() {
+  let credentials;
+  try {
+    credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+  } catch {
+    throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON inválido ou não definido');
+  }
+  const auth = new google.auth.GoogleAuth({
+    credentials,
+    // Scope de leitura+escrita para suportar gestão de usuários
+    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+  });
+  return google.sheets({ version: 'v4', auth });
+}
+
+// ─── CACHE DADOS DE PERFORMANCE ───────────────────────────────────────────────
 let sheetsCache = { data: null, ts: 0 };
 
 async function getRawData() {
@@ -48,20 +65,8 @@ async function getRawData() {
     return sheetsCache.data;
   }
 
-  let credentials;
-  try {
-    credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
-  } catch {
-    throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON inválido ou não definido');
-  }
-
-  const auth = new google.auth.GoogleAuth({
-    credentials,
-    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
-  });
-
-  const sheets  = google.sheets({ version: 'v4', auth });
-  const resp    = await sheets.spreadsheets.values.get({
+  const sheets = getSheets();
+  const resp   = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
     range: SHEET_NAME,
   });
@@ -69,14 +74,11 @@ async function getRawData() {
   const rows = resp.data.values || [];
   if (rows.length < 2) return [];
 
-  // Encontra dinamicamente a linha de cabeçalho (primeira com 3+ colunas preenchidas)
   const headerIdx = rows.findIndex(r => r && r.length >= 3);
   if (headerIdx === -1) return [];
 
-  // Normaliza sem depender de regex com chars Unicode literais (mais robusto)
   const normalize = s => {
     const lower = s.toLowerCase().trim();
-    // Remove diacríticos via charCode (U+0300–U+036F) sem regex literal
     return lower.normalize('NFD').split('').filter(c => {
       const code = c.charCodeAt(0);
       return code < 0x0300 || code > 0x036F;
@@ -84,9 +86,7 @@ async function getRawData() {
   };
 
   const headers = rows[headerIdx].map(normalize);
-  console.log('[DEBUG] headers normalizados:', JSON.stringify(headers));
 
-  // Aceita variações com e sem acento, e sinônimos comuns
   const fieldMap = h => {
     if (h === 'mes' || h === 'mês' || h.startsWith('mê') || (h.startsWith('me') && h.length <= 4)) return 'mes';
     if (h === 'nome' || h === 'colaborador' || h === 'name') return 'nome';
@@ -95,21 +95,121 @@ async function getRawData() {
     return h;
   };
 
-  const parsed = rows.slice(headerIdx + 1).map((row, rowIdx) => {
+  const parsed = rows.slice(headerIdx + 1).map(row => {
     const obj = {};
     headers.forEach((h, i) => { obj[fieldMap(h)] = (row[i] || '').trim(); });
-    // Remove o símbolo % se vier junto com o número
     const percStr = (obj.perc || '0').replace('%', '').replace(',', '.');
     const perc = parseFloat(percStr);
-    if (rowIdx < 3) console.log('[DEBUG] row', rowIdx, JSON.stringify(obj), '→ perc:', perc);
     if (!obj.nome || !obj.mes || isNaN(perc)) return null;
     return { mes: obj.mes, nome: obj.nome, setor: obj.setor || '', perc };
   }).filter(Boolean);
 
-  console.log('[DEBUG] parsed total:', parsed.length);
-
   sheetsCache = { data: parsed, ts: now };
   return parsed;
+}
+
+// ─── GESTÃO DE USUÁRIOS VIA GOOGLE SHEETS ────────────────────────────────────
+
+/**
+ * Garante que a aba "Usuarios" existe na planilha.
+ * Cria a aba com headers se não existir.
+ */
+async function ensureUsersSheet(sheets) {
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+  const exists = meta.data.sheets.some(s => s.properties.title === USERS_SHEET);
+  if (!exists) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
+      requestBody: {
+        requests: [{ addSheet: { properties: { title: USERS_SHEET } } }],
+      },
+    });
+    // Escreve headers
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${USERS_SHEET}!A1:E1`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [['email', 'nome', 'role', 'setor', 'password']] },
+    });
+    console.log(`✅  Aba "${USERS_SHEET}" criada na planilha.`);
+  }
+}
+
+/**
+ * Carrega usuários da aba "Usuarios" da planilha.
+ * Retorna array de usuários (com hash de senha) ou null se falhar.
+ */
+async function loadUsersFromSheets() {
+  const sheets = getSheets();
+  await ensureUsersSheet(sheets);
+
+  const resp = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${USERS_SHEET}!A:E`,
+  });
+  const rows = (resp.data.values || []).slice(1); // pula header
+  return rows
+    .filter(r => r && r[0] && r[2]) // email e role obrigatórios
+    .map(r => ({
+      email:    (r[0] || '').trim(),
+      nome:     (r[1] || '').trim(),
+      role:     (r[2] || '').trim(),
+      setor:    (r[3] || '').trim() || null,
+      password: (r[4] || '').trim(),
+    }))
+    .filter(u => u.email && u.password);
+}
+
+/**
+ * Salva um novo usuário na planilha (linha nova no final).
+ */
+async function saveUserToSheet(user) {
+  const sheets = getSheets();
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${USERS_SHEET}!A:E`,
+    valueInputOption: 'RAW',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: {
+      values: [[user.email, user.nome, user.role, user.setor || '', user.password]],
+    },
+  });
+}
+
+/**
+ * Remove um usuário da planilha pelo e-mail.
+ */
+async function deleteUserFromSheet(email) {
+  const sheets = getSheets();
+  const resp = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${USERS_SHEET}!A:A`,
+  });
+  const rows = resp.data.values || [];
+  const rowIndex = rows.findIndex((r, i) => i > 0 && r[0] && r[0].toLowerCase() === email.toLowerCase());
+  if (rowIndex === -1) throw new Error('Usuário não encontrado na planilha');
+
+  // Busca o sheetId da aba Usuarios
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+  const sheet = meta.data.sheets.find(s => s.properties.title === USERS_SHEET);
+  if (!sheet) throw new Error('Aba Usuarios não encontrada');
+  const sheetId = sheet.properties.sheetId;
+
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: {
+      requests: [{
+        deleteDimension: {
+          range: {
+            sheetId,
+            dimension: 'ROWS',
+            startIndex: rowIndex,
+            endIndex: rowIndex + 1,
+          },
+        },
+      }],
+    },
+  });
 }
 
 // ─── AUTH MIDDLEWARE ──────────────────────────────────────────────────────────
@@ -136,17 +236,18 @@ function requireAuthAPI(req, res, next) {
   }
 }
 
+function requireAdmin(req, res, next) {
+  if (req.user.role !== 'rh_admin') return res.status(403).json({ error: 'Acesso restrito ao Admin RH' });
+  next();
+}
+
 // ─── FILTRAGEM POR PAPEL ──────────────────────────────────────────────────────
 function filterByRole(data, user) {
   switch (user.role) {
-    case 'rh_admin':
-      return data;                                              // vê tudo
-    case 'gestor':
-      return data.filter(d => d.setor === user.setor);         // só o setor dele
-    case 'colaborador':
-      return data.filter(d => d.nome === user.nome);           // só os próprios dados
-    default:
-      return [];
+    case 'rh_admin':   return data;
+    case 'gestor':     return data.filter(d => d.setor === user.setor);
+    case 'colaborador':return data.filter(d => d.nome === user.nome);
+    default:           return [];
   }
 }
 
@@ -203,11 +304,69 @@ app.get('/api/data', requireAuthAPI, async (req, res) => {
   }
 });
 
-// Força refresh do cache (rota admin)
 app.post('/api/refresh', requireAuthAPI, (req, res) => {
   if (req.user.role !== 'rh_admin') return res.status(403).json({ error: 'Acesso negado' });
   sheetsCache = { data: null, ts: 0 };
-  res.json({ ok: true, message: 'Cache limpo — próxima requisição buscará dados novos da planilha' });
+  res.json({ ok: true, message: 'Cache limpo' });
+});
+
+// ─── ADMIN: GESTÃO DE USUÁRIOS ────────────────────────────────────────────────
+
+// GET /api/admin/users — lista usuários sem senhas
+app.get('/api/admin/users', requireAuthAPI, requireAdmin, (req, res) => {
+  const safe = USERS.map(u => ({
+    email: u.email, nome: u.nome, role: u.role, setor: u.setor || null,
+  }));
+  res.json(safe);
+});
+
+// POST /api/admin/users — cria novo usuário
+app.post('/api/admin/users', requireAuthAPI, requireAdmin, async (req, res) => {
+  const { email, nome, role, setor, password } = req.body || {};
+  if (!email || !nome || !role || !password) {
+    return res.status(400).json({ error: 'Campos obrigatórios: email, nome, role, password' });
+  }
+  if (!['rh_admin', 'gestor', 'colaborador'].includes(role)) {
+    return res.status(400).json({ error: 'Role inválido. Use: rh_admin | gestor | colaborador' });
+  }
+  if (role === 'gestor' && !setor) {
+    return res.status(400).json({ error: 'Gestor precisa de setor definido' });
+  }
+  if (USERS.find(u => u.email.toLowerCase() === email.toLowerCase())) {
+    return res.status(409).json({ error: 'E-mail já cadastrado' });
+  }
+
+  try {
+    const hash    = await bcrypt.hash(password, 10);
+    const newUser = { email: email.toLowerCase(), nome, role, setor: setor || null, password: hash };
+    await saveUserToSheet(newUser);
+    USERS.push(newUser);
+    console.log(`✅  Usuário criado: ${email} (${role})`);
+    res.json({ ok: true, user: { email: newUser.email, nome: newUser.nome, role: newUser.role, setor: newUser.setor } });
+  } catch (err) {
+    console.error('Erro ao criar usuário:', err.message);
+    res.status(500).json({ error: 'Erro ao salvar usuário na planilha. Verifique se a Service Account tem permissão de Editor na planilha.' });
+  }
+});
+
+// DELETE /api/admin/users/:email — remove usuário
+app.delete('/api/admin/users/:email', requireAuthAPI, requireAdmin, async (req, res) => {
+  const email = decodeURIComponent(req.params.email).toLowerCase();
+  if (email === req.user.email.toLowerCase()) {
+    return res.status(400).json({ error: 'Não é possível remover seu próprio usuário' });
+  }
+  const idx = USERS.findIndex(u => u.email.toLowerCase() === email);
+  if (idx === -1) return res.status(404).json({ error: 'Usuário não encontrado' });
+
+  try {
+    await deleteUserFromSheet(email);
+    USERS.splice(idx, 1);
+    console.log(`🗑️  Usuário removido: ${email}`);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Erro ao remover usuário:', err.message);
+    res.status(500).json({ error: 'Erro ao remover usuário da planilha.' });
+  }
 });
 
 // ─── DASHBOARD (server-side injection) ───────────────────────────────────────
@@ -219,15 +378,11 @@ app.get('/', requireAuth, async (req, res) => {
     const filtered = filterByRole(all, req.user);
 
     let html = fs.readFileSync(DASHBOARD_HTML, 'utf-8');
-
-    // Injeta dados filtrados e info do usuário logado
     const injection = `
 <script>
-  // ─── DADOS INJETADOS PELO SERVIDOR ───────────────────────────────────────
   window.__YOURH_USER__ = ${JSON.stringify(req.user)};
   window.__YOURH_DATA__ = ${JSON.stringify(filtered)};
 </script>`;
-
     html = html.replace('</head>', injection + '\n</head>');
     res.send(html);
   } catch (err) {
@@ -237,8 +392,29 @@ app.get('/', requireAuth, async (req, res) => {
 });
 
 // ─── START ────────────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`✅  YouRH Dashboard rodando na porta ${PORT}`);
-  console.log(`    Usuários configurados: ${USERS.length}`);
   console.log(`    Planilha: ${SPREADSHEET_ID} / aba: ${SHEET_NAME}`);
+
+  // Carrega usuários da planilha Google Sheets (sobrescreve env var USERS)
+  try {
+    const usersFromSheets = await loadUsersFromSheets();
+    if (usersFromSheets.length > 0) {
+      USERS = usersFromSheets;
+      console.log(`✅  Usuários carregados da planilha: ${USERS.length}`);
+    } else {
+      // Planilha existe mas está vazia — migra os usuários do env var para ela
+      console.log('ℹ️   Planilha de usuários vazia. Migrando env var USERS para a planilha...');
+      const envUsers = JSON.parse(process.env.USERS || '[]');
+      for (const u of envUsers) {
+        await saveUserToSheet(u).catch(e => console.warn('Aviso migração:', e.message));
+      }
+      if (envUsers.length > 0) console.log(`✅  ${envUsers.length} usuário(s) migrado(s) do env var para a planilha.`);
+    }
+  } catch (e) {
+    console.warn('⚠️  Não foi possível carregar usuários da planilha:', e.message);
+    console.warn('    Usando usuários do env var USERS como fallback.');
+  }
+
+  console.log(`    Usuários ativos: ${USERS.length}`);
 });

@@ -342,6 +342,9 @@
     <div class="nav-item" data-sec="heatmap" onclick="showSection('heatmap')">
       <span class="nav-icon">🗂️</span><span class="nav-label"> Heatmap
 </span>    </div>
+    <div class="nav-item nav-admin-only" data-sec="usuarios" onclick="showSection('usuarios')" style="display:none">
+      <span class="nav-icon">👥</span><span class="nav-label"> Usuários
+</span>    </div>
   </nav>
   <div class="sidebar-footer">
     Dados: Jan – Jun 2026<br>
@@ -597,6 +600,64 @@
       <div class="hm-leg-item"><div class="hm-leg-dot" style="background:rgba(237,137,54,.55)"></div> Baixo 60–79%</div>
       <div class="hm-leg-item"><div class="hm-leg-dot" style="background:rgba(252,129,129,.65)"></div> Risco &lt;60%</div>
       <div class="hm-leg-item"><div class="hm-leg-dot" style="background:#1c1c1c;border:1px solid #2e2e2e"></div> Sem dados</div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── USUÁRIOS (Admin RH only) ──────────────────────────────────────────── -->
+<section id="sec-usuarios" class="page-section">
+  <div class="section-title">Gestão de Usuários</div>
+
+  <!-- Tabela de usuários -->
+  <div class="chart-card" style="margin-bottom:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+      <h3 style="font-size:0.8rem;color:#9a9a9a;text-transform:uppercase;letter-spacing:.06em;">Usuários cadastrados</h3>
+      <button onclick="openAddUser()" style="background:#61DD75;color:#0a0a0a;border:none;border-radius:7px;padding:7px 16px;font-size:0.82rem;font-weight:700;cursor:pointer;font-family:inherit;">+ Novo usuário</button>
+    </div>
+    <div id="users-table-wrap">
+      <div style="color:#6b6b6b;font-size:0.85rem;padding:20px 0;">Carregando usuários…</div>
+    </div>
+  </div>
+
+  <!-- Modal: adicionar usuário -->
+  <div id="modal-add-user" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:#161616;border:1px solid #2e2e2e;border-radius:16px;padding:36px 32px;width:100%;max-width:440px;box-shadow:0 24px 64px rgba(0,0,0,.6);">
+      <h2 style="font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:24px;">Novo usuário</h2>
+      <div id="add-user-error" style="display:none;background:rgba(252,129,129,.1);border:1px solid rgba(252,129,129,.3);border-radius:8px;padding:10px 14px;font-size:0.83rem;color:#fc8181;margin-bottom:14px;"></div>
+
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:0.72rem;color:#9a9a9a;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Nome completo</label>
+        <input id="nu-nome" type="text" placeholder="Ex: Ana Souza" style="width:100%;background:#1c1c1c;border:1px solid #2e2e2e;border-radius:7px;padding:10px 12px;color:#e2e8f0;font-size:0.88rem;font-family:inherit;outline:none;">
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:0.72rem;color:#9a9a9a;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">E-mail</label>
+        <input id="nu-email" type="email" placeholder="ana@yourh.com.br" style="width:100%;background:#1c1c1c;border:1px solid #2e2e2e;border-radius:7px;padding:10px 12px;color:#e2e8f0;font-size:0.88rem;font-family:inherit;outline:none;">
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:0.72rem;color:#9a9a9a;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Papel (perfil)</label>
+        <select id="nu-role" onchange="toggleSetorField()" style="width:100%;background:#1c1c1c;border:1px solid #2e2e2e;border-radius:7px;padding:10px 12px;color:#e2e8f0;font-size:0.88rem;font-family:inherit;outline:none;cursor:pointer;">
+          <option value="">— selecione —</option>
+          <option value="rh_admin">Admin RH (vê tudo)</option>
+          <option value="gestor">Gestor (vê apenas o setor)</option>
+          <option value="colaborador">Colaborador (vê apenas os próprios dados)</option>
+        </select>
+      </div>
+      <div id="nu-setor-wrap" style="display:none;margin-bottom:14px;">
+        <label style="display:block;font-size:0.72rem;color:#9a9a9a;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Setor</label>
+        <select id="nu-setor" style="width:100%;background:#1c1c1c;border:1px solid #2e2e2e;border-radius:7px;padding:10px 12px;color:#e2e8f0;font-size:0.88rem;font-family:inherit;outline:none;cursor:pointer;">
+          <option value="">— selecione —</option>
+          <option>CS</option><option>Tech</option><option>Vendas</option>
+          <option>Pré vendas</option><option>MKT</option><option>Conteúdo</option><option>Produto</option>
+        </select>
+      </div>
+      <div style="margin-bottom:22px;">
+        <label style="display:block;font-size:0.72rem;color:#9a9a9a;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Senha inicial</label>
+        <input id="nu-password" type="password" placeholder="Mínimo 6 caracteres" style="width:100%;background:#1c1c1c;border:1px solid #2e2e2e;border-radius:7px;padding:10px 12px;color:#e2e8f0;font-size:0.88rem;font-family:inherit;outline:none;">
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="closeAddUser()" style="flex:1;background:transparent;border:1px solid #2e2e2e;color:#9a9a9a;border-radius:7px;padding:10px;font-size:0.88rem;cursor:pointer;font-family:inherit;">Cancelar</button>
+        <button id="btn-save-user" onclick="submitNewUser()" style="flex:2;background:#61DD75;color:#0a0a0a;border:none;border-radius:7px;padding:10px;font-size:0.88rem;font-weight:700;cursor:pointer;font-family:inherit;">Criar usuário</button>
+      </div>
     </div>
   </div>
 </section>
@@ -1252,7 +1313,137 @@ function showSection(name) {
   else if (name === 'empresa') buildEmpresaSection();
   else if (name === 'alertas') buildAlertasSection(data);
   else if (name === 'heatmap') buildHeatmapSection();
+  else if (name === 'usuarios') loadUsersTable();
   setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+}
+
+// ─── ADMIN VISIBILITY ─────────────────────────────────────────────────────────
+(function() {
+  const u = window.__YOURH_USER__ || {};
+  if (u.role === 'rh_admin') {
+    document.querySelectorAll('.nav-admin-only').forEach(el => el.style.display = '');
+  }
+})();
+
+// ─── GESTÃO DE USUÁRIOS ───────────────────────────────────────────────────────
+async function loadUsersTable() {
+  const wrap = document.getElementById('users-table-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = '<p style="color:#aaa;padding:16px">Carregando...</p>';
+  try {
+    const res = await fetch('/api/admin/users');
+    if (!res.ok) throw new Error('Sem permissão');
+    const users = await res.json();
+    if (!users.length) {
+      wrap.innerHTML = '<p style="color:#aaa;padding:16px">Nenhum usuário cadastrado ainda.</p>';
+      return;
+    }
+    const roleLabel = { rh_admin: 'Admin RH', gestor: 'Gestor', colaborador: 'Colaborador' };
+    const rows = users.map(u => `
+      <tr>
+        <td style="padding:10px 14px">${esc(u.nome)}</td>
+        <td style="padding:10px 14px">${esc(u.email)}</td>
+        <td style="padding:10px 14px">${roleLabel[u.role] || u.role}</td>
+        <td style="padding:10px 14px">${esc(u.setor || '—')}</td>
+        <td style="padding:10px 14px;text-align:center">
+          <button onclick="deleteUser('${esc(u.email)}')"
+            style="background:#fc8181;color:#0a0a0a;border:none;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:12px;font-weight:600">
+            Remover
+          </button>
+        </td>
+      </tr>`).join('');
+    wrap.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;font-size:14px">
+        <thead>
+          <tr style="border-bottom:1px solid #333;color:#aaa;font-size:12px;text-transform:uppercase">
+            <th style="padding:8px 14px;text-align:left">Nome</th>
+            <th style="padding:8px 14px;text-align:left">E-mail</th>
+            <th style="padding:8px 14px;text-align:left">Papel</th>
+            <th style="padding:8px 14px;text-align:left">Setor</th>
+            <th style="padding:8px 14px;text-align:center">Ação</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  } catch(e) {
+    wrap.innerHTML = `<p style="color:#fc8181;padding:16px">Erro: ${e.message}</p>`;
+  }
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function openAddUser() {
+  document.getElementById('nu-nome').value = '';
+  document.getElementById('nu-email').value = '';
+  document.getElementById('nu-role').value = 'colaborador';
+  document.getElementById('nu-setor').value = '';
+  document.getElementById('nu-senha').value = '';
+  document.getElementById('nu-msg').textContent = '';
+  toggleSetorField();
+  document.getElementById('modal-add-user').style.display = 'flex';
+}
+
+function closeAddUser() {
+  document.getElementById('modal-add-user').style.display = 'none';
+}
+
+function toggleSetorField() {
+  const role = document.getElementById('nu-role').value;
+  const show = role === 'gestor' || role === 'colaborador';
+  document.getElementById('nu-setor-wrap').style.display = show ? '' : 'none';
+}
+
+async function submitNewUser() {
+  const msg = document.getElementById('nu-msg');
+  const nome  = document.getElementById('nu-nome').value.trim();
+  const email = document.getElementById('nu-email').value.trim();
+  const role  = document.getElementById('nu-role').value;
+  const setor = document.getElementById('nu-setor').value.trim();
+  const senha = document.getElementById('nu-senha').value;
+
+  if (!nome || !email || !senha) {
+    msg.style.color = '#fc8181';
+    msg.textContent = 'Preencha nome, e-mail e senha.';
+    return;
+  }
+  if ((role === 'gestor' || role === 'colaborador') && !setor) {
+    msg.style.color = '#fc8181';
+    msg.textContent = 'Informe o setor para este papel.';
+    return;
+  }
+
+  msg.style.color = '#aaa';
+  msg.textContent = 'Salvando...';
+  try {
+    const res = await fetch('/api/admin/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome, email, role, setor, password: senha })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro desconhecido');
+    closeAddUser();
+    loadUsersTable();
+  } catch(e) {
+    msg.style.color = '#fc8181';
+    msg.textContent = 'Erro: ' + e.message;
+  }
+}
+
+async function deleteUser(email) {
+  if (!confirm(`Remover o usuário "${email}"?`)) return;
+  try {
+    const res = await fetch('/api/admin/users/' + encodeURIComponent(email), { method: 'DELETE' });
+    if (!res.ok) {
+      const d = await res.json();
+      throw new Error(d.error || 'Erro');
+    }
+    loadUsersTable();
+  } catch(e) {
+    alert('Erro ao remover: ' + e.message);
+  }
 }
 
 // ─── COLABORADORES SECTION ────────────────────────────────────────────────────
