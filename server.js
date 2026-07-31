@@ -73,25 +73,40 @@ async function getRawData() {
   const headerIdx = rows.findIndex(r => r && r.length >= 3);
   if (headerIdx === -1) return [];
 
-  const normalize = s => s.toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  const headers = rows[headerIdx].map(normalize);
+  // Normaliza sem depender de regex com chars Unicode literais (mais robusto)
+  const normalize = s => {
+    const lower = s.toLowerCase().trim();
+    // Remove diacríticos via charCode (U+0300–U+036F) sem regex literal
+    return lower.normalize('NFD').split('').filter(c => {
+      const code = c.charCodeAt(0);
+      return code < 0x0300 || code > 0x036F;
+    }).join('');
+  };
 
-  // Normaliza: mês→mes, %→perc, produtividade→perc
+  const headers = rows[headerIdx].map(normalize);
+  console.log('[DEBUG] headers normalizados:', JSON.stringify(headers));
+
+  // Aceita variações com e sem acento, e sinônimos comuns
   const fieldMap = h => {
-    if (h === 'mes' || h === 'mes') return 'mes';
-    if (h === 'nome') return 'nome';
-    if (h === 'setor') return 'setor';
-    if (h === 'perc' || h === '%' || h === 'produtividade' || h === 'performance') return 'perc';
+    if (h === 'mes' || h === 'mês' || h.startsWith('mê') || (h.startsWith('me') && h.length <= 4)) return 'mes';
+    if (h === 'nome' || h === 'colaborador' || h === 'name') return 'nome';
+    if (h === 'setor' || h === 'sector' || h === 'departamento' || h === 'area' || h === 'área') return 'setor';
+    if (h === '%' || h === 'perc' || h === 'performance' || h === 'produtividade' || h.includes('%') || h.includes('prod') || h.includes('perf')) return 'perc';
     return h;
   };
 
-  const parsed = rows.slice(headerIdx + 1).map(row => {
+  const parsed = rows.slice(headerIdx + 1).map((row, rowIdx) => {
     const obj = {};
     headers.forEach((h, i) => { obj[fieldMap(h)] = (row[i] || '').trim(); });
-    const perc = parseFloat((obj.perc || '0').replace(',', '.'));
+    // Remove o símbolo % se vier junto com o número
+    const percStr = (obj.perc || '0').replace('%', '').replace(',', '.');
+    const perc = parseFloat(percStr);
+    if (rowIdx < 3) console.log('[DEBUG] row', rowIdx, JSON.stringify(obj), '→ perc:', perc);
     if (!obj.nome || !obj.mes || isNaN(perc)) return null;
     return { mes: obj.mes, nome: obj.nome, setor: obj.setor || '', perc };
   }).filter(Boolean);
+
+  console.log('[DEBUG] parsed total:', parsed.length);
 
   sheetsCache = { data: parsed, ts: now };
   return parsed;
