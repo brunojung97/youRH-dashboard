@@ -69,7 +69,13 @@ async function getRawData() {
   const rows = resp.data.values || [];
   if (rows.length < 2) return [];
 
-  const headers = rows[0].map(h => h.toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, ''));
+  // Encontra dinamicamente a linha de cabeçalho (primeira com 3+ colunas preenchidas)
+  const headerIdx = rows.findIndex(r => r && r.length >= 3);
+  if (headerIdx === -1) return [];
+
+  const normalize = s => s.toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const headers = rows[headerIdx].map(normalize);
+
   // Normaliza: mês→mes, %→perc, produtividade→perc
   const fieldMap = h => {
     if (h === 'mes' || h === 'mes') return 'mes';
@@ -79,7 +85,7 @@ async function getRawData() {
     return h;
   };
 
-  const parsed = rows.slice(1).map(row => {
+  const parsed = rows.slice(headerIdx + 1).map(row => {
     const obj = {};
     headers.forEach((h, i) => { obj[fieldMap(h)] = (row[i] || '').trim(); });
     const perc = parseFloat((obj.perc || '0').replace(',', '.'));
