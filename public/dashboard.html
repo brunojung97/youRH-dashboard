@@ -1,0 +1,1741 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel de Performance — YouRH</title>
+<link rel="preconnect" href="https://api.fontshare.com">
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'General Sans', 'Segoe UI', sans-serif; background: #0a0a0a; color: #e2e8f0; }
+
+  header {
+    background: linear-gradient(135deg, #161616 0%, #1f1f1f 100%);
+    border-bottom: 1px solid #2e2e2e;
+    padding: 20px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  header h1 { font-size: 1.3rem; font-weight: 700; color: #fff; letter-spacing: 0.4px; text-transform: uppercase; }
+  header span { font-size: 0.8rem; color: #9a9a9a; }
+
+  .filters {
+    padding: 14px 32px;
+    background: #111111;
+    border-bottom: 1px solid #1c1c1c;
+    display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+  }
+  .filter-group { display: flex; align-items: center; gap: 8px; }
+  .filters label { font-size: 0.72rem; color: #9a9a9a; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+  select {
+    background: #1c1c1c; color: #e2e8f0; border: 1px solid #2e2e2e;
+    border-radius: 6px; padding: 6px 12px; font-size: 0.83rem; cursor: pointer;
+    outline: none; transition: border-color 0.2s;
+  }
+  select:focus { border-color: #61DD75; }
+
+  .container { padding: 24px 32px; max-width: 1600px; margin: 0 auto; }
+
+  /* KPIs */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .kpi {
+    background: #161616; border: 1px solid #2e2e2e; border-radius: 12px;
+    padding: 20px; transition: border-color 0.2s;
+  }
+  .kpi:hover { border-color: #61DD75; }
+  .kpi-label { font-size: 0.72rem; color: #9a9a9a; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .kpi-value { font-size: 1.9rem; font-weight: 700; color: #fff; line-height: 1; }
+  .kpi-sub { font-size: 0.75rem; color: #9a9a9a; margin-top: 6px; }
+  .kpi-value.green { color: #61DD75; }
+  .kpi-value.yellow { color: #ecc94b; }
+  .kpi-value.red { color: #fc8181; }
+  .kpi-value.blue { color: #B186FF; }
+
+  /* Section title */
+  .section-title {
+    font-size: 0.7rem; color: #6b6b6b; text-transform: uppercase;
+    letter-spacing: 0.1em; margin-bottom: 16px; margin-top: 8px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-title::after { content:''; flex:1; height:1px; background:#1c1c1c; }
+
+  /* Charts grid */
+  .charts-row { display: grid; gap: 20px; margin-bottom: 20px; }
+  .charts-row-2 { grid-template-columns: 1fr 1fr; }
+  .charts-row-3 { grid-template-columns: 2fr 1fr; }
+
+  .chart-card {
+    background: #161616; border: 1px solid #2e2e2e; border-radius: 12px;
+    padding: 20px;
+  }
+  .chart-card h3 { font-size: 0.8rem; color: #9a9a9a; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 16px; }
+  .chart-card .note { font-size: 0.7rem; color: #6b6b6b; margin-top: -12px; margin-bottom: 14px; }
+
+  /* Collaborator Section */
+  .collab-card {
+    background: #161616; border: 1px solid #2e2e2e; border-radius: 12px;
+    padding: 20px; margin-bottom: 20px;
+  }
+  .collab-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; }
+  .collab-header h3 { font-size: 0.8rem; color: #9a9a9a; text-transform: uppercase; letter-spacing: 0.06em; }
+  .collab-search-wrap { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .collab-search-wrap label { font-size: 0.72rem; color: #9a9a9a; text-transform: uppercase; letter-spacing: 0.05em; }
+  #collab-select {
+    background: #111111; color: #e2e8f0; border: 1px solid #2e2e2e;
+    border-radius: 6px; padding: 6px 14px; font-size: 0.85rem; min-width: 240px;
+    cursor: pointer; outline: none;
+  }
+  #collab-select:focus { border-color: #61DD75; }
+  .collab-body { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+  .collab-stats { display: flex; flex-direction: column; gap: 12px; }
+  .collab-stat { background: #111111; border-radius: 8px; padding: 14px 16px; }
+  .collab-stat .cs-label { font-size: 0.68rem; color: #9a9a9a; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .collab-stat .cs-value { font-size: 1.3rem; font-weight: 700; }
+  .collab-empty { display: flex; align-items: center; justify-content: center; height: 200px; color: #6b6b6b; font-size: 0.9rem; }
+  .collab-months-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px,1fr)); gap: 8px; }
+  .collab-month-chip {
+    background: #111111; border-radius: 8px; padding: 10px 12px; text-align: center;
+    border: 1px solid #2e2e2e;
+  }
+  .collab-month-chip .cm-mes { font-size: 0.68rem; color: #9a9a9a; margin-bottom: 3px; }
+  .collab-month-chip .cm-val { font-size: 1rem; font-weight: 700; }
+
+  /* Table */
+  .table-card {
+    background: #161616; border: 1px solid #2e2e2e; border-radius: 12px;
+    padding: 20px; margin-bottom: 20px;
+  }
+  .table-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
+  .table-header h3 { font-size: 0.8rem; color: #9a9a9a; text-transform: uppercase; letter-spacing: 0.06em; }
+  #search { background: #111111; color: #e2e8f0; border: 1px solid #2e2e2e; border-radius: 6px; padding: 6px 12px; font-size: 0.85rem; width: 200px; outline: none; }
+  #search:focus { border-color: #61DD75; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+  thead th { padding: 10px 14px; text-align: left; color: #9a9a9a; font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #2e2e2e; cursor: pointer; user-select: none; white-space: nowrap; }
+  thead th:hover { color: #e2e8f0; }
+  tbody tr { border-bottom: 1px solid #1c1c1c; transition: background 0.15s; }
+  tbody tr:hover { background: #1c1c1c; }
+  tbody td { padding: 10px 14px; color: #e2e8f0; }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 600; }
+  .badge-vendas { background: #2d4a7a; color: #90cdf4; }
+  .badge-tech { background: #2a4365; color: #63b3ed; }
+  .badge-cs { background: #285e4a; color: #68d391; }
+  .badge-prevend { background: #744210; color: #f6ad55; }
+  .badge-mkt { background: #521b5e; color: #d6bcfa; }
+  .badge-conte { background: #3d2c0a; color: #fbd38d; }
+  .badge-prod { background: #3c3060; color: #b794f4; }
+  .badge-default { background: #2d3748; color: #a0aec0; }
+
+  .perf-bar { display: flex; align-items: center; gap: 8px; }
+  .perf-bar-track { flex: 1; height: 6px; background: #2e2e2e; border-radius: 3px; max-width: 120px; }
+  .perf-bar-fill { height: 100%; border-radius: 3px; }
+  .perf-text { min-width: 52px; text-align: right; font-weight: 600; }
+
+  .pagination { display: flex; gap: 6px; justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
+  .page-btn { background: #1c1c1c; border: 1px solid #2e2e2e; color: #b5b5b5; padding: 5px 12px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; transition: all 0.15s; }
+  .page-btn:hover, .page-btn.active { background: #61DD75; color: #fff; border-color: #61DD75; }
+
+  .chart-preview-note { font-size: 0.75rem; color: #6b6b6b; margin: -10px 0 16px; }
+
+  @media (max-width: 900px) {
+    .charts-row-2, .charts-row-3, .collab-body { grid-template-columns: 1fr; }
+    .container { padding: 16px; }
+    header { padding: 16px; }
+    .filters { padding: 12px 16px; }
+    .chart-preview-note { margin: 0 0 12px; }
+  }
+
+  .kpi, .chart-card, .table-card { border-left: 3px solid #61DD75; }
+  .collab-card { border-left: 3px solid #6212B3; }
+  header { border-bottom: 2px solid #61DD75; }
+  select:focus, #search:focus, #collab-select:focus { box-shadow: 0 0 0 2px rgba(97,221,117,0.25); }
+
+  /* ─── POPUP MODAL ─────────────────────────────────────────────────────────── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 1000;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: #161616; border: 1px solid #2e2e2e; border-radius: 14px;
+    padding: 28px; min-width: 340px; max-width: 520px; width: 90%;
+    max-height: 80vh; display: flex; flex-direction: column;
+    border-left: 3px solid var(--modal-accent, #61DD75);
+  }
+  .modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 18px;
+  }
+  .modal-title { font-size: 0.85rem; font-weight: 600; color: #fff; text-transform: uppercase; letter-spacing: 0.05em; }
+  .modal-close {
+    background: none; border: none; color: #9a9a9a; font-size: 1.3rem;
+    cursor: pointer; line-height: 1; padding: 0 4px;
+  }
+  .modal-close:hover { color: #fff; }
+  .modal-count { font-size: 0.75rem; color: #9a9a9a; margin-bottom: 14px; }
+  .modal-list { overflow-y: auto; flex: 1; }
+  .modal-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0; border-bottom: 1px solid #2e2e2e;
+    font-size: 0.85rem;
+  }
+  .modal-item:last-child { border-bottom: none; }
+  .modal-item-name { color: #e2e8f0; font-weight: 500; flex: 1; }
+  .modal-item-sector { color: #9a9a9a; font-size: 0.75rem; margin: 0 12px; }
+  .modal-item-months { display: flex; gap: 6px; }
+  .modal-chip {
+    font-size: 0.7rem; font-weight: 600; padding: 2px 7px; border-radius: 4px;
+  }
+  .modal-chip.red { background: rgba(252,129,129,0.15); color: #fc8181; }
+  .modal-chip.green { background: rgba(97,221,117,0.15); color: #61DD75; }
+  .kpi.clickable { cursor: pointer; }
+  .kpi.clickable:hover { border-color: #61DD75; box-shadow: 0 0 0 1px rgba(97,221,117,0.2); }
+
+  /* ─── EXCLUSION ──────────────────────────────────────────────────────────── */
+  .exclusion-group { display: flex; flex-direction: column; gap: 6px; }
+  .excluded-chips { display: flex; flex-wrap: wrap; gap: 4px; min-height: 0; }
+  .excl-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(252,129,129,0.10); border: 1px solid rgba(252,129,129,0.25);
+    color: #fc8181; border-radius: 20px; padding: 3px 10px; font-size: 0.72rem;
+  }
+  .excl-chip button {
+    background: none; border: none; color: #fc8181; cursor: pointer;
+    font-size: 1rem; padding: 0; line-height: 1;
+  }
+  .excl-chip button:hover { color: #fff; }
+
+  /* ─── APP SHELL ───────────────────────────────────────────────────────────── */
+  html, body { height: 100%; overflow: hidden; }
+  .app { display: flex; height: 100vh; overflow: hidden; }
+  .sidebar {
+    width: 220px; min-width: 220px; flex-shrink: 0;
+    background: #0d0d0d; border-right: 1px solid #1c1c1c;
+    display: flex; flex-direction: column; overflow-y: auto;
+  }
+  .sidebar-brand { padding: 22px 20px 18px; border-bottom: 1px solid #1c1c1c; }
+  .sidebar-logo { font-size: 1.05rem; font-weight: 700; color: #61DD75; letter-spacing: 0.3px; }
+  .sidebar-sub  { font-size: 0.68rem; color: #6b6b6b; margin-top: 4px; line-height: 1.4; }
+  .sidebar-nav  { padding: 10px 0; flex: 1; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 20px; cursor: pointer;
+    color: #9a9a9a; font-size: 0.82rem; font-weight: 500;
+    border-left: 3px solid transparent; transition: all 0.15s; user-select: none;
+  }
+  .nav-item:hover { color: #e2e8f0; background: rgba(255,255,255,0.025); }
+  .nav-item.active { color: #61DD75; border-left-color: #61DD75; background: rgba(97,221,117,0.07); }
+  .nav-icon { font-size: 1rem; width: 18px; text-align: center; }
+  .sidebar-footer { padding: 14px 20px; border-top: 1px solid #1c1c1c; font-size: 0.68rem; color: #6b6b6b; line-height: 1.6; }
+  .main-wrap   { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+  .main-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; }
+  .page-section         { display: none; }
+  .page-section.active  { display: block; }
+  @media (max-width: 900px) {
+    .sidebar { display: none; }
+    html, body { height: auto; overflow: auto; }
+    .app, .main-wrap { display: block; height: auto; overflow: visible; }
+    .main-scroll { overflow: visible; }
+  }
+
+  /* ─── SIDEBAR COLLAPSE ────────────────────────────────────────────────────── */
+  .app { position: relative; }
+  .sidebar { transition: width 0.28s cubic-bezier(.4,0,.2,1); overflow: hidden; }
+  .sidebar.collapsed { width: 52px; }
+  .sidebar.collapsed .sidebar-brand,
+  .sidebar.collapsed .sidebar-footer,
+  .sidebar.collapsed .nav-label { display: none; }
+  .sidebar.collapsed .nav-item { padding: 13px 0; justify-content: center; gap: 0; }
+  .sidebar.collapsed .nav-icon { width: auto; margin: 0; }
+
+  /* ─── HEATMAP ────────────────────────────────────────────────────────────── */
+  .heatmap-scroll { overflow-x: auto; }
+  .heatmap-table { border-collapse: separate; border-spacing: 3px; font-size: 0.78rem; }
+  .heatmap-table th.hm-mes {
+    font-size: 0.68rem; font-weight: 700; color: #9a9a9a;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 0 4px 6px; white-space: nowrap; text-align: center;
+  }
+  .heatmap-table th.hm-name-h {
+    font-size: 0.68rem; font-weight: 700; color: #9a9a9a;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 0 8px 6px 0; white-space: nowrap;
+  }
+  .heatmap-table td.hm-name {
+    font-size: 0.78rem; color: #b5b5b5; font-weight: 500;
+    padding: 2px 10px 2px 0; white-space: nowrap;
+    max-width: 130px; overflow: hidden; text-overflow: ellipsis;
+  }
+  .hm-cell {
+    width: 44px; height: 26px; border-radius: 5px;
+    font-size: 0.72rem; font-weight: 700;
+    text-align: center; vertical-align: middle; cursor: default;
+    transition: transform 0.15s, opacity 0.15s;
+  }
+  .hm-cell:hover { transform: scale(1.18); opacity: 0.95; z-index: 2; position: relative; }
+  .hm-legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 14px; }
+  .hm-leg-item { display: flex; align-items: center; gap: 5px; font-size: 0.72rem; color: #9a9a9a; }
+  .hm-leg-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+  .hm-tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+  .hm-tab {
+    padding: 6px 16px; border-radius: 6px; font-size: 0.78rem; font-weight: 600;
+    cursor: pointer; border: 1px solid #2e2e2e; background: #111111;
+    color: #9a9a9a; transition: all 0.15s; user-select: none;
+  }
+  .hm-tab:hover { color: #e2e8f0; border-color: #61DD75; }
+  .hm-tab.active { background: rgba(97,221,117,0.1); border-color: #61DD75; color: #61DD75; }
+
+  /* ─── ACTIVE TOGGLE ──────────────────────────────────────────────────────── */
+  .toggle-group { display: flex; align-items: center; gap: 8px; }
+  .toggle-wrap { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+  .toggle-wrap input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .toggle-slider {
+    position: absolute; inset: 0; border-radius: 20px;
+    background: #2e2e2e; border: 1px solid #3a3a3a;
+    cursor: pointer; transition: background 0.2s, border-color 0.2s;
+  }
+  .toggle-slider::before {
+    content: ''; position: absolute;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #6b6b6b; left: 2px; top: 2px;
+    transition: transform 0.2s, background 0.2s;
+  }
+  .toggle-wrap input:checked + .toggle-slider { background: rgba(97,221,117,0.2); border-color: #61DD75; }
+  .toggle-wrap input:checked + .toggle-slider::before { transform: translateX(16px); background: #61DD75; }
+  .toggle-label { font-size: 0.72rem; color: #9a9a9a; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; cursor: pointer; user-select: none; }
+  .toggle-label.on { color: #61DD75; }
+  .toggle-badge {
+    font-size: 0.65rem; font-weight: 700; padding: 1px 6px; border-radius: 4px;
+    background: rgba(97,221,117,0.12); border: 1px solid rgba(97,221,117,0.25);
+    color: #61DD75; display: none;
+  }
+  .toggle-badge.visible { display: inline-block; }
+</style>
+</head>
+<body>
+<div class="app" id="app-shell">
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-logo">&#9679; YouRH</div>
+    <div class="sidebar-sub">Performance<br>Jan – Jun 2026</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-item active" data-sec="geral" onclick="showSection('geral')">
+      <span class="nav-icon">📊</span><span class="nav-label"> Visão Geral
+</span>    </div>
+    <div class="nav-item" data-sec="colaboradores" onclick="showSection('colaboradores')">
+      <span class="nav-icon">👤</span><span class="nav-label"> Colaboradores
+</span>    </div>
+    <div class="nav-item" data-sec="setores" onclick="showSection('setores')">
+      <span class="nav-icon">🏢</span><span class="nav-label"> Setores
+</span>    </div>
+    <div class="nav-item" data-sec="empresa" onclick="showSection('empresa')">
+      <span class="nav-icon">🏆</span><span class="nav-label"> Empresa
+</span>    </div>
+    <div class="nav-item" data-sec="alertas" onclick="showSection('alertas')">
+      <span class="nav-icon">⚠️</span><span class="nav-label"> Alertas
+</span>    </div>
+    <div class="nav-item" data-sec="heatmap" onclick="showSection('heatmap')">
+      <span class="nav-icon">🗂️</span><span class="nav-label"> Heatmap
+</span>    </div>
+  </nav>
+  <div class="sidebar-footer">
+    Dados: Jan – Jun 2026<br>
+    Última atualiz.: Jul 2026
+  </div>
+</aside>
+<div class="main-wrap">
+<div class="main-scroll">
+
+<header>
+  <h1>Painel de Performance</h1>
+  <span>Janeiro – Junho 2026</span>
+  <div id="user-bar" style="display:flex;align-items:center;gap:12px;">
+    <div style="text-align:right;">
+      <div style="font-size:0.8rem;color:#e2e8f0;" id="user-nome"></div>
+      <div style="font-size:0.7rem;color:#6b6b6b;" id="user-role"></div>
+    </div>
+    <button onclick="logout()" style="background:#1c1c1c;border:1px solid #2e2e2e;color:#9a9a9a;padding:6px 14px;border-radius:6px;font-size:0.75rem;cursor:pointer;font-family:inherit;">Sair</button>
+  </div>
+</header>
+
+<div class="filters">
+  <div class="filter-group">
+    <label>Mês</label>
+    <select id="filter-month">
+      <option value="all">Todos os meses</option>
+      <optgroup label="── Trimestres">
+        <option value="Q1">Q1 — Jan · Fev · Mar</option>
+        <option value="Q2">Q2 — Abr · Mai · Jun</option>
+      </optgroup>
+      <optgroup label="── Meses">
+        <option value="Janeiro">Janeiro</option>
+        <option value="Fevereiro">Fevereiro</option>
+        <option value="Março">Março</option>
+        <option value="Abril">Abril</option>
+        <option value="Maio">Maio</option>
+        <option value="Junho">Junho</option>
+      </optgroup>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label>Setor</label>
+    <select id="filter-sector">
+      <option value="all">Todos os setores</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label>Faixa de performance</label>
+    <select id="filter-range">
+      <option value="all">Qualquer resultado</option>
+      <option value="100+">🟢 Bateu a meta (100% ou mais)</option>
+      <option value="90-100">🟡 Quase lá (90% a 99%)</option>
+      <option value="80-90">🟠 Atenção (80% a 89%)</option>
+      <option value="below80">🔴 Abaixo do esperado (menos de 80%)</option>
+    </select>
+  </div>
+  <div class="filter-group toggle-group" style="margin-left:8px">
+    <label class="toggle-wrap" for="filter-active">
+      <input type="checkbox" id="filter-active" onchange="onActiveToggle()">
+      <span class="toggle-slider"></span>
+    </label>
+    <span class="toggle-label" id="active-label" onclick="document.getElementById('filter-active').click()">Colaborador Ativo</span>
+    <span class="toggle-badge" id="active-badge"></span>
+  </div>
+</div>
+
+<div class="container">
+<section id="sec-geral" class="page-section active">
+
+  <!-- KPIs -->
+  <div class="section-title">Visão Geral</div>
+  <div class="kpis" id="kpis"></div>
+
+  <!-- Charts row 1 -->
+  <div class="section-title">Evolução &amp; Setores</div>
+  <div class="charts-row charts-row-2">
+    <div class="chart-card">
+      <h3>Média de Produtividade — Mês a Mês</h3>
+      <p class="note">Sempre exibe todos os meses (independente dos filtros)</p>
+      <canvas id="chartMonths" height="220"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Média por Setor (período selecionado)</h3>
+      <canvas id="chartSectors" height="220"></canvas>
+    </div>
+  </div>
+
+  <!-- Charts row 2 -->
+  <div class="section-title">Rankings &amp; Distribuição</div>
+  <div class="charts-row charts-row-3" style="margin-bottom:20px;">
+    <div class="chart-card">
+      <h3>Top 10 — Maior Produtividade (período selecionado)</h3>
+      <canvas id="chartTop10"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Distribuição por Faixa de Performance</h3>
+      <div style="display:flex;align-items:center;justify-content:center;height:260px;">
+        <canvas id="chartDist" height="260"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Collaborator Section -->
+  <div class="section-title">Análise por Colaborador</div>
+  <div class="collab-card">
+    <div class="collab-header">
+      <h3>Evolução Individual</h3>
+      <div class="collab-search-wrap">
+        <label>Colaborador</label>
+        <select id="collab-select">
+          <option value="">— Selecione um colaborador —</option>
+        </select>
+      </div>
+    </div>
+    <div id="collab-content">
+      <div class="collab-empty">Selecione um colaborador para ver a análise</div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="section-title">Detalhamento Individual</div>
+  <div class="table-card">
+    <div class="table-header">
+      <h3>Todos os registros</h3>
+      <input type="text" id="search" placeholder="Buscar por nome...">
+  <div class="filter-group exclusion-group">
+    <label>Excluir colaborador</label>
+    <select id="exclude-select">
+      <option value="">— Selecionar —</option>
+    </select>
+    <div class="excluded-chips" id="excluded-chips"></div>
+  </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th onclick="sortTable('nome')">Nome ⇅</th>
+          <th onclick="sortTable('setor')">Setor ⇅</th>
+          <th onclick="sortTable('mes')">Mês ⇅</th>
+          <th onclick="sortTable('perc')">Produtividade ⇅</th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+    <div class="pagination" id="pagination"></div>
+  </div>
+
+
+  <!-- ─── PREVIEW: LINHA ──────────────────────────────────────────────────── -->
+  <div class="section-title"><span>📈 Prévia — Evolução Mensal em Linha</span></div>
+  <p class="chart-preview-note">Preview — avise se quiser substituir o gráfico de barras ou manter os dois.</p>
+  <div class="charts-row charts-row-2">
+    <div class="chart-card">
+      <h3>Média de Produtividade Mês a Mês — Linha</h3>
+      <canvas id="chartLinePreview"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Média por Setor — Linha (Período Selecionado)</h3>
+      <canvas id="chartSectorLine"></canvas>
+    </div>
+  </div>
+
+</section>
+
+<section id="sec-colaboradores" class="page-section">
+  <div class="section-title">Ranking Individual</div>
+  <div class="chart-card" style="margin-bottom:20px">
+    <h3>Ranking — Média de Produtividade (Período Selecionado)</h3>
+    <div id="ranking-table-wrap"></div>
+  </div>
+  <div class="section-title">Variação &amp; Sequências</div>
+  <div class="charts-row charts-row-2" style="margin-bottom:20px">
+    <div class="chart-card">
+      <h3>Delta — Último Mês vs. Anterior</h3>
+      <div id="delta-table-wrap"></div>
+    </div>
+    <div class="chart-card">
+      <h3>🔥 Sequência Acima da Meta (100%+)</h3>
+      <div id="streak-above-wrap"></div>
+    </div>
+  </div>
+</section>
+
+<section id="sec-setores" class="page-section">
+  <div class="section-title">Performance por Setor</div>
+  <div class="charts-row charts-row-2" style="margin-bottom:20px">
+    <div class="chart-card">
+      <h3>% da Equipe Acima da Meta por Setor</h3>
+      <canvas id="chartSectorAbove"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Headcount por Setor</h3>
+      <canvas id="chartSectorHead"></canvas>
+    </div>
+  </div>
+  <div class="chart-card">
+    <h3>Comparativo de Setores — Período Selecionado</h3>
+    <div id="sector-table-wrap"></div>
+  </div>
+</section>
+
+<section id="sec-empresa" class="page-section">
+  <div class="section-title">Visão Geral da Empresa</div>
+  <div class="kpis" id="empresa-kpis" style="margin-bottom:28px"></div>
+  <div class="section-title">Comparativo Q1 vs Q2</div>
+  <div class="charts-row charts-row-2">
+    <div class="chart-card">
+      <h3>Média Geral — Q1 vs Q2</h3>
+      <canvas id="chartQ1Q2"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Por Setor — Q1 vs Q2</h3>
+      <canvas id="chartQ1Q2Setor"></canvas>
+    </div>
+  </div>
+</section>
+
+<section id="sec-alertas" class="page-section">
+  <div class="section-title">Alertas de Performance</div>
+  <div class="charts-row charts-row-2" style="margin-bottom:20px">
+    <div class="chart-card">
+      <h3>⬇️ Queda Consecutiva (2+ meses)</h3>
+      <div id="alert-decline-wrap"></div>
+    </div>
+    <div class="chart-card">
+      <h3>💥 Queda Brusca — Último Mês (≥15pp)</h3>
+      <div id="alert-drop-wrap"></div>
+    </div>
+  </div>
+  <div class="chart-card">
+    <h3>🔴 Risco Contínuo — Abaixo de 80% (últimos 3 meses)</h3>
+    <div id="alert-risk-wrap"></div>
+  </div>
+</section>
+
+
+<section id="sec-heatmap" class="page-section">
+  <div class="section-title">Heatmap de Performance</div>
+  <div class="chart-card" style="border-left-color:#B186FF">
+    <div class="hm-tabs">
+      <div class="hm-tab active" id="hm-tab-colab" onclick="switchHmTab('colab')">👤 Colaboradores</div>
+      <div class="hm-tab" id="hm-tab-setor" onclick="switchHmTab('setor')">🏢 Setores</div>
+    </div>
+    <div id="hm-subtitle" style="font-size:0.72rem;color:#6b6b6b;margin-bottom:12px">
+      Todos os colaboradores ordenados pela média decrescente · 6 meses completos
+    </div>
+    <div class="heatmap-scroll" id="heatmap-wrap"></div>
+    <div class="hm-legend">
+      <div class="hm-leg-item"><div class="hm-leg-dot" style="background:rgba(97,221,117,.75)"></div> Elite ≥120%</div>
+      <div class="hm-leg-item"><div class="hm-leg-dot" style="background:rgba(97,221,117,.45)"></div> Acima 100–119%</div>
+      <div class="hm-leg-item"><div class="hm-leg-dot" style="background:rgba(177,134,255,.60)"></div> Bom 90–99%</div>
+      <div class="hm-leg-item"><div class="hm-leg-dot" style="background:rgba(236,201,75,.55)"></div> Atenção 80–89%</div>
+      <div class="hm-leg-item"><div class="hm-leg-dot" style="background:rgba(237,137,54,.55)"></div> Baixo 60–79%</div>
+      <div class="hm-leg-item"><div class="hm-leg-dot" style="background:rgba(252,129,129,.65)"></div> Risco &lt;60%</div>
+      <div class="hm-leg-item"><div class="hm-leg-dot" style="background:#1c1c1c;border:1px solid #2e2e2e"></div> Sem dados</div>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<script>
+// ─── DATA ────────────────────────────────────────────────────────────────────
+const raw = (window.__YOURH_DATA__ || []);
+
+// ─── AUTH GUARD + USER INFO ───────────────────────────────────────────────────
+(function() {
+  if (!window.__YOURH_DATA__) { window.location.href = '/login'; return; }
+  const u = window.__YOURH_USER__ || {};
+  const roleLabel = { rh_admin: 'Admin RH', gestor: 'Gestor', colaborador: 'Colaborador' };
+  document.addEventListener('DOMContentLoaded', () => {
+    const n = document.getElementById('user-nome');
+    const r = document.getElementById('user-role');
+    if (n) n.textContent = u.nome || '';
+    if (r) r.textContent = roleLabel[u.role] || u.role || '';
+  });
+})();
+
+async function logout() {
+  await fetch('/logout', { method: 'POST' });
+  window.location.href = '/login';
+}
+
+// Normalize sector names
+raw.forEach(d => { d.setor = d.setor.replace('Tecnologia','Tech'); });
+
+const MONTHS = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho"];
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function avg(arr) { return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
+
+function percColor(p) {
+  if (p >= 100) return '#61DD75';
+  if (p >= 90)  return '#ecc94b';
+  if (p >= 80)  return '#ed8936';
+  return '#fc8181';
+}
+
+function sectorBadge(s) {
+  const map = { 'Vendas':'badge-vendas','Tech':'badge-tech','CS':'badge-cs','Pré vendas':'badge-prevend','MKT':'badge-mkt','Conteúdo':'badge-conte','Produto':'badge-prod' };
+  return map[s] || 'badge-default';
+}
+
+function matchRange(perc, range) {
+  if (range === 'all')     return true;
+  if (range === '100+')    return perc >= 100;
+  if (range === '90-100')  return perc >= 90 && perc < 100;
+  if (range === '80-90')   return perc >= 80 && perc < 90;
+  if (range === 'below80') return perc < 80;
+  return true;
+}
+
+const Q1_MONTHS = ['Janeiro','Fevereiro','Março'];
+const Q2_MONTHS = ['Abril','Maio','Junho'];
+const excluded = new Set();
+
+// Collaborator is "active" if they have a record in the last available month
+function getActiveNames() {
+  const lastMonth = MONTHS[MONTHS.length - 1];
+  return new Set(raw.filter(d => d.mes === lastMonth && !excluded.has(d.nome)).map(d => d.nome));
+}
+
+function isActiveFilterOn() {
+  return document.getElementById('filter-active').checked;
+}
+
+function onActiveToggle() {
+  const on = isActiveFilterOn();
+  const lbl = document.getElementById('active-label');
+  const badge = document.getElementById('active-badge');
+  lbl.classList.toggle('on', on);
+  if (on) {
+    const count = getActiveNames().size;
+    badge.textContent = count + ' ativos';
+    badge.classList.add('visible');
+  } else {
+    badge.classList.remove('visible');
+  }
+  render();
+}
+
+function getFiltered() {
+  const m = document.getElementById('filter-month').value;
+  const s = document.getElementById('filter-sector').value;
+  const r = document.getElementById('filter-range').value;
+  const q = document.getElementById('search').value.toLowerCase();
+  const qMonths = m === 'Q1' ? Q1_MONTHS : m === 'Q2' ? Q2_MONTHS : null;
+  const activeNames = isActiveFilterOn() ? getActiveNames() : null;
+  return raw.filter(d =>
+    !excluded.has(d.nome) &&
+    (!activeNames || activeNames.has(d.nome)) &&
+    (m === 'all' || (qMonths ? qMonths.includes(d.mes) : d.mes === m)) &&
+    (s === 'all' || d.setor === s) &&
+    matchRange(d.perc, r) &&
+    d.nome.toLowerCase().includes(q)
+  );
+}
+
+// ─── POPULATE SELECTS ────────────────────────────────────────────────────────
+const sectors = [...new Set(raw.map(d=>d.setor))].sort();
+const sf = document.getElementById('filter-sector');
+sectors.forEach(s => { const o=document.createElement('option'); o.value=s; o.textContent=s; sf.appendChild(o); });
+
+const names = [...new Set(raw.map(d=>d.nome))].sort((a,b)=>a.localeCompare(b));
+const cs = document.getElementById('collab-select');
+names.forEach(n => { const o=document.createElement('option'); o.value=n; o.textContent=n; cs.appendChild(o); });
+
+// ─── CHART INSTANCES ─────────────────────────────────────────────────────────
+let chartMonths, chartSectors, chartTop10, chartDist, chartCollab;
+function destroyChart(c) { if(c) c.destroy(); }
+
+const gridColor = '#1c1c1c';
+const tickColor = '#9a9a9a';
+Chart.register(ChartDataLabels);
+
+const SECTOR_PALETTE = ['#61DD75','#9B5DE5'];
+const SECTOR_COLORS = {
+  'CS':         '#61DD75',
+  'Tech':       '#9B5DE5',
+  'Vendas':     '#38BDF8',
+  'Pré vendas': '#FB923C',
+  'MKT':        '#F472B6',
+  'Conteúdo':   '#34D399',
+  'Produto':    '#FACC15',
+};
+
+const DL_BAR_V = { anchor:'end', align:'top', color:'#b5b5b5', font:{size:10,weight:'600'}, formatter:v=>v.toFixed(0)+'%', clamp:true };
+const DL_BAR_H = { anchor:'end', align:'right', color:'#b5b5b5', font:{size:10,weight:'600'}, formatter:v=>v.toFixed(0)+'%', clamp:true, padding:{right:4} };
+const DL_OFF   = { display:false };
+
+// ─── CHART: MONTHS (always full data, ignores filters) ───────────────────────
+function buildChartMonths() {
+  const activeNames = isActiveFilterOn() ? getActiveNames() : null;
+  const activeRaw = raw.filter(d => !excluded.has(d.nome) && (!activeNames || activeNames.has(d.nome)));
+  const monthAvgs = MONTHS.map(m => {
+    const vals = activeRaw.filter(d=>d.mes===m).map(d=>d.perc);
+    return avg(vals);
+  });
+  destroyChart(chartMonths);
+  chartMonths = new Chart(document.getElementById('chartMonths'), {
+    type: 'bar',
+    data: {
+      labels: MONTHS,
+      datasets: [{
+        data: monthAvgs.map(v=>+v.toFixed(2)),
+        backgroundColor: monthAvgs.map(v => v>=100?'#61DD75':'#B186FF'),
+        borderRadius: 6, borderSkipped: false,
+        datalabels: DL_BAR_V,
+      }]
+    },
+    options: {
+      responsive: true, layout: { padding: { top: 20 } },
+      plugins: { legend:{display:false}, datalabels: DL_BAR_V, tooltip:{callbacks:{label: ctx=>` Média: ${ctx.parsed.y.toFixed(1)}%`}} },
+      scales: {
+        x: { ticks:{color:tickColor}, grid:{color:gridColor} },
+        y: { ticks:{color:tickColor, callback:v=>v+'%'}, grid:{color:gridColor} }
+      }
+    }
+  });
+}
+
+// ─── CHART: SECTORS ──────────────────────────────────────────────────────────
+function buildChartSectors(data) {
+  const sectorMap = {};
+  data.forEach(d => { if(!sectorMap[d.setor]) sectorMap[d.setor]=[]; sectorMap[d.setor].push(d.perc); });
+  const labels = Object.keys(sectorMap).sort((a,b)=>avg(sectorMap[b])-avg(sectorMap[a]));
+  const vals = labels.map(s=>+avg(sectorMap[s]).toFixed(2));
+  destroyChart(chartSectors);
+  chartSectors = new Chart(document.getElementById('chartSectors'), {
+    type: 'bar',
+    data: { labels, datasets:[{ data:vals, backgroundColor:labels.map((_,i)=>SECTOR_PALETTE[i%SECTOR_PALETTE.length]), borderRadius:6, borderSkipped:false, datalabels:DL_BAR_H }] },
+    options: {
+      indexAxis: 'y', responsive: true, layout: { padding: { right: 40 } },
+      plugins: { legend:{display:false}, datalabels:DL_BAR_H, tooltip:{callbacks:{label:ctx=>` ${ctx.parsed.x.toFixed(1)}%`}} },
+      scales: {
+        x: { ticks:{color:tickColor, callback:v=>v+'%'}, grid:{color:gridColor} },
+        y: { ticks:{color:tickColor}, grid:{color:gridColor} }
+      }
+    }
+  });
+}
+
+// ─── CHART: TOP 10 ───────────────────────────────────────────────────────────
+function buildChartTop10(data) {
+  const sorted = [...data].sort((a,b)=>b.perc-a.perc).slice(0,10);
+  destroyChart(chartTop10);
+  chartTop10 = new Chart(document.getElementById('chartTop10'), {
+    type: 'bar',
+    data: {
+      labels: sorted.map(d=>d.nome.split(' ').slice(0,2).join(' ')),
+      datasets: [{ data:sorted.map(d=>d.perc), backgroundColor:sorted.map(d=>percColor(d.perc)), borderRadius:6, borderSkipped:false }]
+    },
+    options: {
+      responsive: true, aspectRatio: 2.4, layout: { padding: { top: 22 } },
+      plugins: { legend:{display:false}, datalabels:DL_BAR_V, tooltip:{callbacks:{label:ctx=>` ${ctx.parsed.y.toFixed(1)}% — ${sorted[ctx.dataIndex].setor} (${sorted[ctx.dataIndex].mes})`}} },
+      scales: {
+        x: { ticks:{color:tickColor, maxRotation:30}, grid:{color:gridColor} },
+        y: { ticks:{color:tickColor, callback:v=>v+'%'}, grid:{color:gridColor},
+             suggestedMax: sorted.length ? sorted[0].perc * 1.12 : 120 }
+      }
+    }
+  });
+}
+
+// ─── CHART: DISTRIBUTION ─────────────────────────────────────────────────────
+function buildChartDist(data) {
+  const ranges = [
+    { label:'🟢 100% ou mais', min:100, max:Infinity, color:'#61DD75' },
+    { label:'🟡 90% a 99%',    min:90,  max:100,     color:'#ecc94b' },
+    { label:'🟠 80% a 89%',    min:80,  max:90,      color:'#ed8936' },
+    { label:'🔴 Menos de 80%', min:0,   max:80,      color:'#fc8181' },
+  ];
+  destroyChart(chartDist);
+  chartDist = new Chart(document.getElementById('chartDist'), {
+    type: 'doughnut',
+    data: {
+      labels: ranges.map(r=>r.label),
+      datasets: [{
+        data: ranges.map(r=>data.filter(d=>d.perc>=r.min&&d.perc<r.max).length),
+        backgroundColor: ranges.map(r=>r.color),
+        borderColor: '#161616', borderWidth: 3, hoverOffset: 8,
+      }]
+    },
+    options: {
+      responsive: true, cutout: '62%',
+      plugins: {
+        legend: { position:'bottom', labels:{color:'#b5b5b5', font:{size:11}, padding:10, boxWidth:12} },
+        tooltip: { callbacks:{ label: ctx=>` ${ctx.label.replace(/🟢|🟡|🟠|🔴/,'').trim()}: ${ctx.parsed} pessoas` } }
+      }
+    }
+  });
+}
+
+// ─── KPIs ─────────────────────────────────────────────────────────────────────
+function buildKPIs(data) {
+  const totalAvg = avg(data.map(d=>d.perc));
+  const above100 = data.filter(d=>d.perc>=100).length;
+  const pctAbove = data.length ? (above100/data.length*100).toFixed(0) : 0;
+  const top = data.length ? [...data].sort((a,b)=>b.perc-a.perc)[0] : null;
+  const below80 = data.filter(d=>d.perc<80).length;
+  const activeSectors = [...new Set(data.map(d=>d.setor))].length;
+  const activeMes = [...new Set(data.map(d=>d.mes))].length;
+  // ─── Last-3-months persistent KPIs (always from raw, filter-independent)
+  const last3 = MONTHS.slice(-3);
+  const last3Data = raw.filter(d => last3.includes(d.mes) && !excluded.has(d.nome));
+  const last3Names = [...new Set(last3Data.map(d => d.nome))];
+  const below80_3m = last3Names.filter(nome => {
+    const entries = last3Data.filter(d => d.nome === nome);
+    return entries.length >= 2 && entries.every(d => d.perc < 80);
+  }).length;
+  const above100_3m = last3Names.filter(nome => {
+    const entries = last3Data.filter(d => d.nome === nome);
+    return entries.length >= 2 && entries.every(d => d.perc >= 100);
+  }).length;
+  const avgClass = totalAvg>=100?'green':totalAvg>=90?'yellow':totalAvg>=80?'yellow':'red';
+
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi">
+      <div class="kpi-label">Média Geral</div>
+      <div class="kpi-value ${avgClass}">${totalAvg.toFixed(1)}%</div>
+      <div class="kpi-sub">${data.length} registros</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Acima da Meta</div>
+      <div class="kpi-value blue">${pctAbove}%</div>
+      <div class="kpi-sub">${above100} de ${data.length} pessoas</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Top Performer</div>
+      <div class="kpi-value green">${top ? top.perc.toFixed(1)+'%' : '—'}</div>
+      <div class="kpi-sub">${top ? top.nome.split(' ')[0]+' · '+top.mes : ''}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Abaixo de 80%</div>
+      <div class="kpi-value ${below80>0?'red':'green'}">${below80}</div>
+      <div class="kpi-sub">pessoa${below80!==1?'s':''} abaixo do esperado</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Setores Ativos</div>
+      <div class="kpi-value blue">${activeSectors}</div>
+      <div class="kpi-sub">${activeMes} mês${activeMes!==1?'es':''} no período</div>
+    </div>
+    <div class="kpi clickable" onclick="openKpiModal('below80')">
+      <div class="kpi-label">⚠️ Abaixo de 80% — últ. 3 meses</div>
+      <div class="kpi-value ${below80_3m>0?'red':'green'}">${below80_3m}</div>
+      <div class="kpi-sub">colaborador${below80_3m!==1?'es':''} em risco contínuo</div>
+    </div>
+    <div class="kpi clickable" onclick="openKpiModal('above100')">
+      <div class="kpi-label">🏆 Acima de 100% — últ. 3 meses</div>
+      <div class="kpi-value green">${above100_3m}</div>
+      <div class="kpi-sub">colaborador${above100_3m!==1?'es':''} consistentes</div>
+    </div>
+  `;
+}
+
+// ─── COLLABORATOR SECTION ────────────────────────────────────────────────────
+function buildCollabSection(name) {
+  const content = document.getElementById('collab-content');
+  if (!name) {
+    content.innerHTML = '<div class="collab-empty">Selecione um colaborador para ver a análise</div>';
+    destroyChart(chartCollab); chartCollab = null;
+    return;
+  }
+  const rows = raw.filter(d=>d.nome===name);
+  if (!rows.length) { content.innerHTML = '<div class="collab-empty">Sem dados para este colaborador</div>'; return; }
+
+  const setor = rows[rows.length-1].setor;
+  const avgPerc = avg(rows.map(d=>d.perc));
+  const best = rows.reduce((a,b)=>b.perc>a.perc?b:a);
+  const mesesPresentes = MONTHS.filter(m=>rows.find(d=>d.mes===m));
+  const acimaMeta = rows.filter(d=>d.perc>=100).length;
+
+  const avgClass = avgPerc>=100?'#61DD75':avgPerc>=90?'#ecc94b':avgPerc>=80?'#ed8936':'#fc8181';
+
+  content.innerHTML = `
+    <div class="collab-body">
+      <div>
+        <canvas id="chartCollabCanvas" height="200"></canvas>
+      </div>
+      <div class="collab-stats">
+        <div class="collab-stat">
+          <div class="cs-label">Média no período</div>
+          <div class="cs-value" style="color:${avgClass}">${avgPerc.toFixed(1)}%</div>
+        </div>
+        <div class="collab-stat">
+          <div class="cs-label">Setor</div>
+          <div class="cs-value" style="font-size:1rem"><span class="badge ${sectorBadge(setor)}">${setor}</span></div>
+        </div>
+        <div class="collab-stat">
+          <div class="cs-label">Meses acima da meta</div>
+          <div class="cs-value" style="color:#61DD75">${acimaMeta} / ${rows.length}</div>
+        </div>
+        <div class="collab-stat">
+          <div class="cs-label">Melhor mês</div>
+          <div class="cs-value" style="font-size:1rem;color:#B186FF">${best.mes} · ${best.perc.toFixed(1)}%</div>
+        </div>
+        <div class="collab-stat">
+          <div class="cs-label">Meses com dados</div>
+          <div class="cs-value" style="font-size:0.85rem;color:#b5b5b5;line-height:1.6">${mesesPresentes.join(', ')}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Build chart
+  const chartData = MONTHS.map(m => {
+    const row = rows.find(d=>d.mes===m);
+    return row ? row.perc : null;
+  });
+
+  destroyChart(chartCollab);
+  chartCollab = new Chart(document.getElementById('chartCollabCanvas'), {
+    type: 'line',
+    data: {
+      labels: MONTHS,
+      datasets: [{
+        label: name.split(' ')[0],
+        data: chartData,
+        borderColor: '#61DD75',
+        backgroundColor: 'rgba(97,221,117,0.16)',
+        pointBackgroundColor: chartData.map(v => v===null?'transparent':percColor(v)),
+        pointBorderColor: chartData.map(v => v===null?'transparent':percColor(v)),
+        pointRadius: 6,
+        pointHoverRadius: 8,
+        tension: 0.3,
+        fill: true,
+        spanGaps: false,
+      }, {
+        label: 'Meta (100%)',
+        data: MONTHS.map(()=>100),
+        borderColor: 'rgba(177,134,255,0.25)',
+        borderDash: [6,4],
+        pointRadius: 0,
+        fill: false,
+      }]
+    },
+    options: {
+      responsive: true, layout: { padding: { top: 16 } },
+      plugins: {
+        legend: { labels:{ color:'#b5b5b5', font:{size:11}, boxWidth:12 } },
+        tooltip: { callbacks:{ label: ctx => ctx.parsed.y !== null ? ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}%` : ' Sem dados' } },
+        datalabels: { display: false }
+      },
+      scales: {
+        x: { ticks:{color:tickColor}, grid:{color:gridColor} },
+        y: { ticks:{color:tickColor, callback:v=>v+'%'}, grid:{color:gridColor}, suggestedMin:0 }
+      }
+    }
+  });
+}
+
+
+// ─── CHART: LINE PREVIEW ──────────────────────────────────────────────────────
+let chartLinePreview;
+function buildChartLinePreview() {
+  const activeNames = isActiveFilterOn() ? getActiveNames() : null;
+  const activeRaw = raw.filter(d => !excluded.has(d.nome) && (!activeNames || activeNames.has(d.nome)));
+  const monthAvgs = MONTHS.map(m => {
+    const vals = activeRaw.filter(d => d.mes === m).map(d => d.perc);
+    return vals.length ? +avg(vals).toFixed(2) : null;
+  });
+  if (chartLinePreview) chartLinePreview.destroy();
+  chartLinePreview = new Chart(document.getElementById('chartLinePreview'), {
+    type: 'line',
+    data: {
+      labels: MONTHS,
+      datasets: [{
+        label: 'Média geral',
+        data: monthAvgs,
+        borderColor: '#61DD75',
+        backgroundColor: 'rgba(97,221,117,0.10)',
+        pointBackgroundColor: monthAvgs.map(v => v >= 100 ? '#61DD75' : '#9B5DE5'),
+        pointBorderColor: monthAvgs.map(v => v >= 100 ? '#61DD75' : '#9B5DE5'),
+        pointRadius: 6, pointHoverRadius: 9,
+        tension: 0.35, fill: true, spanGaps: false,
+        datalabels: {
+          align: 'top', offset: 8,
+          color: ctx => monthAvgs[ctx.dataIndex] >= 100 ? '#61DD75' : '#B186FF',
+          font: { size: 11, weight: '700' },
+          formatter: v => v !== null ? v.toFixed(0)+'%' : null,
+          display: v => v !== null,
+        }
+      }, {
+        label: 'Meta (100%)',
+        data: MONTHS.map(() => 100),
+        borderColor: 'rgba(155,93,229,0.30)',
+        borderDash: [6, 4], pointRadius: 0, fill: false,
+        datalabels: { display: false }
+      }]
+    },
+    options: {
+      responsive: true, aspectRatio: 2.4, layout: { padding: { top: 28 } },
+      plugins: {
+        legend: { display: false },
+        datalabels: {},
+        tooltip: { callbacks: { label: ctx => ctx.parsed.y !== null ? ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}%` : '' } }
+      },
+      scales: {
+        x: { ticks: { color: tickColor }, grid: { color: gridColor } },
+        y: { ticks: { color: tickColor, callback: v => v+'%' }, grid: { color: gridColor }, suggestedMin: 0 }
+      }
+    }
+  });
+}
+
+// ─── CHART: SECTOR LINE ───────────────────────────────────────────────────────
+let chartSectorLine;
+function buildChartSectorLine(data) {
+  const sectors = [...new Set(raw.filter(d=>!excluded.has(d.nome)).map(d=>d.setor))].sort();
+  const datasets = sectors.map((s, i) => {
+    const color = SECTOR_COLORS[s] || SECTOR_PALETTE[i % SECTOR_PALETTE.length];
+    const monthVals = MONTHS.map(m => {
+      const vals = data.filter(d => d.setor === s && d.mes === m).map(d => d.perc);
+      return vals.length ? +avg(vals).toFixed(2) : null;
+    });
+    return {
+      label: s,
+      data: monthVals,
+      borderColor: color,
+      backgroundColor: 'transparent',
+      pointBackgroundColor: color,
+      pointBorderColor: color,
+      pointRadius: 5, pointHoverRadius: 7,
+      tension: 0.3, fill: false, spanGaps: false,
+      datalabels: { display: false }
+    };
+  });
+
+  if (chartSectorLine) chartSectorLine.destroy();
+  chartSectorLine = new Chart(document.getElementById('chartSectorLine'), {
+    type: 'line',
+    data: { labels: MONTHS, datasets },
+    options: {
+      responsive: true, aspectRatio: 2.4, layout: { padding: { top: 8 } },
+      plugins: {
+        legend: { position: 'top', align: 'end', labels: { color: '#b5b5b5', font: { size: 10 }, boxWidth: 10, padding: 12 } },
+        datalabels: { display: false },
+        tooltip: { callbacks: { label: ctx => ctx.parsed.y !== null ? ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}%` : '' } }
+      },
+      scales: {
+        x: { ticks: { color: tickColor }, grid: { color: gridColor } },
+        y: { ticks: { color: tickColor, callback: v => v+'%' }, grid: { color: gridColor }, suggestedMin: 0 }
+      }
+    }
+  });
+}
+// ─── TABLE ────────────────────────────────────────────────────────────────────
+let currentPage = 1, sortKey = 'perc', sortDir = -1;
+const pageSize = 15;
+
+function sortTable(key) {
+  if (sortKey===key) sortDir*=-1; else { sortKey=key; sortDir=-1; }
+  renderTable();
+}
+
+function renderTable() {
+  const data = getFiltered();
+  const sorted = [...data].sort((a,b) => {
+    const va=a[sortKey], vb=b[sortKey];
+    return typeof va==='string' ? sortDir*va.localeCompare(vb) : sortDir*(va-vb);
+  });
+  const pages = Math.max(1, Math.ceil(sorted.length/pageSize));
+  if (currentPage>pages) currentPage=1;
+  const slice = sorted.slice((currentPage-1)*pageSize, currentPage*pageSize);
+
+  document.getElementById('table-body').innerHTML = slice.map(d => {
+    const fillW = Math.min(d.perc/200*100, 100).toFixed(0);
+    const c = percColor(d.perc);
+    return `<tr>
+      <td style="font-weight:500">${d.nome}</td>
+      <td><span class="badge ${sectorBadge(d.setor)}">${d.setor}</span></td>
+      <td style="color:#9a9a9a">${d.mes}</td>
+      <td>
+        <div class="perf-bar">
+          <div class="perf-bar-track"><div class="perf-bar-fill" style="width:${fillW}%;background:${c}"></div></div>
+          <span class="perf-text" style="color:${c}">${d.perc.toFixed(1)}%</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const pag = document.getElementById('pagination');
+  pag.innerHTML = '';
+  for (let i=1;i<=pages;i++) {
+    const btn = document.createElement('button');
+    btn.className = 'page-btn'+(i===currentPage?' active':'');
+    btn.textContent = i;
+    btn.onclick = () => { currentPage=i; renderTable(); };
+    pag.appendChild(btn);
+  }
+}
+
+// ─── RENDER ALL ───────────────────────────────────────────────────────────────
+function render() {
+  currentPage = 1;
+  const data = getFiltered();
+  buildKPIs(data);
+  buildChartMonths();       // always uses raw
+  buildChartSectors(data);
+  buildChartTop10(data);
+  buildChartDist(data);
+  buildChartLinePreview();
+  buildChartSectorLine(data);
+  renderTable();
+  if (typeof activeSection !== 'undefined') {
+    if (activeSection === 'colaboradores') buildColaboradoresSection(data);
+    else if (activeSection === 'setores') buildSetoresSection(data);
+    else if (activeSection === 'empresa') buildEmpresaSection();
+    else if (activeSection === 'alertas') buildAlertasSection(data);
+  }
+}
+
+// ─── EVENTS ───────────────────────────────────────────────────────────────────
+['filter-month','filter-sector','filter-range'].forEach(id =>
+  document.getElementById(id).addEventListener('change', render)
+);
+
+// ─── EXCLUSION ────────────────────────────────────────────────────────────────
+const exclSelect = document.getElementById('exclude-select');
+names.forEach(n => { const o=document.createElement('option'); o.value=n; o.textContent=n; exclSelect.appendChild(o); });
+
+function renderExclusionChips() {
+  document.getElementById('excluded-chips').innerHTML = [...excluded].map(n =>
+    `<span class="excl-chip">${n.split(' ')[0]} <button onclick="removeExclusion('${n.replace(/'/g,"\\'")}')">&times;</button></span>`
+  ).join('');
+  exclSelect.value = '';
+}
+function addExclusion(name) {
+  if (!name || excluded.has(name)) return;
+  excluded.add(name);
+  renderExclusionChips();
+  render();
+}
+function removeExclusion(name) {
+  excluded.delete(name);
+  renderExclusionChips();
+  render();
+}
+exclSelect.addEventListener('change', e => addExclusion(e.target.value));
+
+document.getElementById('search').addEventListener('input', () => { currentPage=1; renderTable(); });
+document.getElementById('collab-select').addEventListener('change', e => buildCollabSection(e.target.value));
+
+
+// ─── MODAL POPUP ─────────────────────────────────────────────────────────────
+function openKpiModal(type) {
+  const last3 = MONTHS.slice(-3);
+  const last3Data = raw.filter(d => last3.includes(d.mes) && !excluded.has(d.nome));
+  const names = [...new Set(last3Data.map(d => d.nome))];
+
+  const isBelow = type === 'below80';
+  const matched = names
+    .map(nome => {
+      const entries = last3Data.filter(d => d.nome === nome);
+      return { nome, setor: entries[0].setor, entries };
+    })
+    .filter(p => {
+      if (p.entries.length < 2) return false;
+      return isBelow
+        ? p.entries.every(d => d.perc < 80)
+        : p.entries.every(d => d.perc >= 100);
+    })
+    .sort((a,b) => {
+      const avgA = a.entries.reduce((s,d)=>s+d.perc,0)/a.entries.length;
+      const avgB = b.entries.reduce((s,d)=>s+d.perc,0)/b.entries.length;
+      return isBelow ? avgA - avgB : avgB - avgA;
+    });
+
+  const accent = isBelow ? '#fc8181' : '#61DD75';
+  document.getElementById('modalBox').style.setProperty('--modal-accent', accent);
+  document.getElementById('modalTitle').textContent = isBelow
+    ? '⚠️ Abaixo de 80% — últimos 3 meses'
+    : '🏆 Acima de 100% — últimos 3 meses';
+  document.getElementById('modalCount').textContent =
+    `${matched.length} colaborador${matched.length!==1?'es':''} · ${last3.join(', ')}`;
+
+  document.getElementById('modalList').innerHTML = matched.map(p => {
+    const chips = last3.map(m => {
+      const entry = p.entries.find(d => d.mes === m);
+      if (!entry) return `<span class="modal-chip" style="opacity:0.3">—</span>`;
+      const cls = entry.perc < 80 ? 'red' : entry.perc >= 100 ? 'green' : 'yellow';
+      return `<span class="modal-chip ${cls}">${entry.perc.toFixed(0)}%</span>`;
+    }).join('');
+    return `<div class="modal-item">
+      <span class="modal-item-name">${p.nome}</span>
+      <span class="modal-item-sector">${p.setor}</span>
+      <span class="modal-item-months">${chips}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('kpiModal').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('kpiModal').classList.remove('open');
+}
+
+// ─── NAVIGATION ───────────────────────────────────────────────────────────────
+let activeSection = 'geral';
+function showSection(name) {
+  document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+  document.getElementById('sec-' + name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelector('.nav-item[data-sec="' + name + '"]').classList.add('active');
+  activeSection = name;
+  const data = getFiltered();
+  if (name === 'colaboradores') buildColaboradoresSection(data);
+  else if (name === 'setores') buildSetoresSection(data);
+  else if (name === 'empresa') buildEmpresaSection();
+  else if (name === 'alertas') buildAlertasSection(data);
+  else if (name === 'heatmap') buildHeatmapSection();
+  setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+}
+
+// ─── COLABORADORES SECTION ────────────────────────────────────────────────────
+function buildColaboradoresSection(data) {
+  // Ranking
+  const byName = {};
+  data.forEach(d => {
+    if (!byName[d.nome]) byName[d.nome] = { setor: d.setor, vals: [] };
+    byName[d.nome].vals.push(d.perc);
+  });
+  const ranked = Object.entries(byName).map(([nome, obj]) => ({
+    nome, setor: obj.setor,
+    avg: avg(obj.vals), count: obj.vals.length,
+    best: Math.max(...obj.vals), worst: Math.min(...obj.vals)
+  })).sort((a, b) => b.avg - a.avg);
+
+  const rankWrap = document.getElementById('ranking-table-wrap');
+  if (!ranked.length) {
+    rankWrap.innerHTML = '<p style="color:#6b6b6b;padding:20px">Sem dados para o período selecionado.</p>';
+  } else {
+    rankWrap.innerHTML = '<table><thead><tr>' +
+      '<th>#</th><th>Nome</th><th>Setor</th><th>Média</th><th>Melhor</th><th>Pior</th><th>Meses</th>' +
+      '</tr></thead><tbody>' +
+      ranked.map((r, i) => {
+        const c = percColor(r.avg);
+        const bar = Math.min(r.avg / 200 * 100, 100).toFixed(0);
+        return '<tr>' +
+          '<td style="color:#6b6b6b;font-size:0.8rem">' + (i + 1) + '</td>' +
+          '<td style="font-weight:500">' + r.nome + '</td>' +
+          '<td><span class="badge ' + sectorBadge(r.setor) + '">' + r.setor + '</span></td>' +
+          '<td><div class="perf-bar">' +
+            '<div class="perf-bar-track"><div class="perf-bar-fill" style="width:' + bar + '%;background:' + c + '"></div></div>' +
+            '<span class="perf-text" style="color:' + c + '">' + r.avg.toFixed(1) + '%</span>' +
+          '</div></td>' +
+          '<td style="color:#61DD75;font-weight:600">' + r.best.toFixed(1) + '%</td>' +
+          '<td style="color:#fc8181">' + r.worst.toFixed(1) + '%</td>' +
+          '<td style="color:#9a9a9a">' + r.count + '</td>' +
+        '</tr>';
+      }).join('') + '</tbody></table>';
+  }
+
+  // Delta: last 2 available months
+  const deltaWrap = document.getElementById('delta-table-wrap');
+  const activeMths = MONTHS.filter(m => raw.some(d => d.mes === m && !excluded.has(d.nome)));
+  if (activeMths.length < 2) {
+    deltaWrap.innerHTML = '<p style="color:#6b6b6b;padding:16px">Necessário ao menos 2 meses de dados.</p>';
+  } else {
+    const mCurr = activeMths[activeMths.length - 1];
+    const mPrev = activeMths[activeMths.length - 2];
+    const currData = raw.filter(d => d.mes === mCurr && !excluded.has(d.nome));
+    const prevData = raw.filter(d => d.mes === mPrev && !excluded.has(d.nome));
+    const deltas = currData.map(dc => {
+      const dp = prevData.find(d => d.nome === dc.nome);
+      if (!dp) return null;
+      return { nome: dc.nome, setor: dc.setor, curr: dc.perc, prev: dp.perc, delta: dc.perc - dp.perc };
+    }).filter(Boolean).sort((a, b) => b.delta - a.delta);
+
+    deltaWrap.innerHTML = '<p style="font-size:0.72rem;color:#6b6b6b;margin-bottom:12px">' + mPrev + ' → ' + mCurr + '</p>' +
+      '<table><thead><tr><th>Nome</th><th>' + mPrev + '</th><th>' + mCurr + '</th><th>Variação</th></tr></thead><tbody>' +
+      deltas.map(r => {
+        const sign = r.delta >= 0 ? '+' : '';
+        const dc = r.delta >= 5 ? '#61DD75' : r.delta >= 0 ? '#ecc94b' : r.delta >= -10 ? '#ed8936' : '#fc8181';
+        return '<tr>' +
+          '<td style="font-weight:500">' + r.nome.split(' ').slice(0, 2).join(' ') + '</td>' +
+          '<td style="color:#9a9a9a">' + r.prev.toFixed(1) + '%</td>' +
+          '<td style="color:#e2e8f0">' + r.curr.toFixed(1) + '%</td>' +
+          '<td style="font-weight:700;color:' + dc + '">' + sign + r.delta.toFixed(1) + 'pp</td>' +
+        '</tr>';
+      }).join('') + '</tbody></table>';
+  }
+
+  // Streak: consecutive months >= 100%
+  const streakWrap = document.getElementById('streak-above-wrap');
+  const allPeople = [...new Set(raw.filter(d => !excluded.has(d.nome)).map(d => d.nome))];
+  const streaks = allPeople.map(nome => {
+    const rows = MONTHS.map(m => raw.find(d => d.nome === nome && d.mes === m)).filter(Boolean);
+    let streak = 0;
+    for (let i = rows.length - 1; i >= 0; i--) {
+      if (rows[i].perc >= 100) streak++;
+      else break;
+    }
+    return { nome, setor: rows.length ? rows[rows.length - 1].setor : '', streak };
+  }).filter(r => r.streak > 0).sort((a, b) => b.streak - a.streak).slice(0, 15);
+
+  if (!streaks.length) {
+    streakWrap.innerHTML = '<p style="color:#6b6b6b;padding:16px">Nenhuma sequência ativa.</p>';
+  } else {
+    streakWrap.innerHTML = '<table><thead><tr><th>Nome</th><th>Setor</th><th>Sequência</th></tr></thead><tbody>' +
+      streaks.map(r =>
+        '<tr>' +
+        '<td style="font-weight:500">' + r.nome.split(' ').slice(0, 2).join(' ') + '</td>' +
+        '<td><span class="badge ' + sectorBadge(r.setor) + '">' + r.setor + '</span></td>' +
+        '<td style="color:#61DD75;font-weight:700">🔥 ' + r.streak + ' mês' + (r.streak > 1 ? 'es' : '') + '</td>' +
+        '</tr>'
+      ).join('') + '</tbody></table>';
+  }
+}
+
+// ─── SETORES SECTION ──────────────────────────────────────────────────────────
+let chartSectorAbove, chartSectorHead;
+function buildSetoresSection(data) {
+  const sectorMap = {};
+  data.forEach(d => {
+    if (!sectorMap[d.setor]) sectorMap[d.setor] = { vals: [], names: new Set() };
+    sectorMap[d.setor].vals.push(d.perc);
+    sectorMap[d.setor].names.add(d.nome);
+  });
+  const sects = Object.keys(sectorMap).sort((a, b) => avg(sectorMap[b].vals) - avg(sectorMap[a].vals));
+
+  const pctAbove = sects.map(s => {
+    const v = sectorMap[s].vals;
+    return +(v.filter(x => x >= 100).length / v.length * 100).toFixed(1);
+  });
+
+  if (chartSectorAbove) chartSectorAbove.destroy();
+  chartSectorAbove = new Chart(document.getElementById('chartSectorAbove'), {
+    type: 'bar',
+    data: { labels: sects, datasets: [{ data: pctAbove, backgroundColor: sects.map((_, i) => SECTOR_PALETTE[i % SECTOR_PALETTE.length]), borderRadius: 6, borderSkipped: false }] },
+    options: {
+      responsive: true, aspectRatio: 1.8, layout: { padding: { top: 20 } },
+      plugins: { legend: { display: false }, datalabels: DL_BAR_V, tooltip: { callbacks: { label: ctx => ' ' + ctx.parsed.y.toFixed(1) + '% acima da meta' } } },
+      scales: {
+        x: { ticks: { color: tickColor }, grid: { color: gridColor } },
+        y: { min: 0, max: 100, ticks: { color: tickColor, callback: v => v + '%' }, grid: { color: gridColor } }
+      }
+    }
+  });
+
+  const headcount = sects.map(s => sectorMap[s].names.size);
+  if (chartSectorHead) chartSectorHead.destroy();
+  chartSectorHead = new Chart(document.getElementById('chartSectorHead'), {
+    type: 'bar',
+    data: { labels: sects, datasets: [{ data: headcount, backgroundColor: '#6212B3', borderRadius: 6, borderSkipped: false }] },
+    options: {
+      responsive: true, aspectRatio: 1.8, layout: { padding: { top: 20 } },
+      plugins: {
+        legend: { display: false },
+        datalabels: { anchor: 'end', align: 'top', color: '#b5b5b5', font: { size: 11, weight: '600' }, formatter: v => v + ' p', clamp: true },
+        tooltip: { callbacks: { label: ctx => ' ' + ctx.parsed.y + ' pessoas' } }
+      },
+      scales: {
+        x: { ticks: { color: tickColor }, grid: { color: gridColor } },
+        y: { ticks: { color: tickColor }, grid: { color: gridColor }, beginAtZero: true }
+      }
+    }
+  });
+
+  const tw = document.getElementById('sector-table-wrap');
+  tw.innerHTML = '<table><thead><tr>' +
+    '<th>Setor</th><th>Colaboradores</th><th>Média</th><th>% ≥100%</th><th>% &lt;80%</th><th>Melhor</th>' +
+    '</tr></thead><tbody>' +
+    sects.map(s => {
+      const v = sectorMap[s].vals;
+      const avgV = avg(v);
+      const abv = (v.filter(x => x >= 100).length / v.length * 100).toFixed(0);
+      const blw = (v.filter(x => x < 80).length / v.length * 100).toFixed(0);
+      const best = Math.max(...v);
+      const c = percColor(avgV);
+      return '<tr>' +
+        '<td><span class="badge ' + sectorBadge(s) + '">' + s + '</span></td>' +
+        '<td style="color:#9a9a9a">' + sectorMap[s].names.size + '</td>' +
+        '<td style="color:' + c + ';font-weight:600">' + avgV.toFixed(1) + '%</td>' +
+        '<td style="color:#61DD75">' + abv + '%</td>' +
+        '<td style="color:' + (Number(blw) > 0 ? '#fc8181' : '#9a9a9a') + '">' + blw + '%</td>' +
+        '<td style="color:#B186FF">' + best.toFixed(1) + '%</td>' +
+      '</tr>';
+    }).join('') + '</tbody></table>';
+}
+
+// ─── EMPRESA SECTION ──────────────────────────────────────────────────────────
+let chartQ1Q2, chartQ1Q2Setor;
+function buildEmpresaSection() {
+  const ar = raw.filter(d => !excluded.has(d.nome));
+  const q1d = ar.filter(d => Q1_MONTHS.includes(d.mes));
+  const q2d = ar.filter(d => Q2_MONTHS.includes(d.mes));
+  const q1a = avg(q1d.map(d => d.perc));
+  const q2a = avg(q2d.map(d => d.perc));
+  const diff = q2a - q1a;
+  const totalHead = [...new Set(ar.map(d => d.nome))].length;
+  const overallAvg = avg(ar.map(d => d.perc));
+  const pctA = (ar.filter(d => d.perc >= 100).length / ar.length * 100).toFixed(0);
+
+  const cls = v => v >= 100 ? 'green' : v >= 80 ? 'yellow' : 'red';
+  document.getElementById('empresa-kpis').innerHTML =
+    '<div class="kpi"><div class="kpi-label">Total de Colaboradores</div>' +
+      '<div class="kpi-value blue">' + totalHead + '</div>' +
+      '<div class="kpi-sub">ativos no semestre</div></div>' +
+    '<div class="kpi"><div class="kpi-label">Média Semestral</div>' +
+      '<div class="kpi-value ' + cls(overallAvg) + '">' + overallAvg.toFixed(1) + '%</div>' +
+      '<div class="kpi-sub">Jan – Jun 2026</div></div>' +
+    '<div class="kpi"><div class="kpi-label">Média Q1</div>' +
+      '<div class="kpi-value ' + cls(q1a) + '">' + q1a.toFixed(1) + '%</div>' +
+      '<div class="kpi-sub">Jan · Fev · Mar</div></div>' +
+    '<div class="kpi"><div class="kpi-label">Média Q2</div>' +
+      '<div class="kpi-value ' + cls(q2a) + '">' + q2a.toFixed(1) + '%</div>' +
+      '<div class="kpi-sub">Abr · Mai · Jun</div></div>' +
+    '<div class="kpi"><div class="kpi-label">Acima da Meta (Semestre)</div>' +
+      '<div class="kpi-value ' + (Number(pctA) >= 60 ? 'green' : 'yellow') + '">' + pctA + '%</div>' +
+      '<div class="kpi-sub">de todos os registros</div></div>' +
+    '<div class="kpi"><div class="kpi-label">Variação Q1→Q2</div>' +
+      '<div class="kpi-value ' + (diff >= 0 ? 'green' : 'red') + '">' + (diff >= 0 ? '+' : '') + diff.toFixed(1) + 'pp</div>' +
+      '<div class="kpi-sub">evolução entre trimestres</div></div>';
+
+  if (chartQ1Q2) chartQ1Q2.destroy();
+  chartQ1Q2 = new Chart(document.getElementById('chartQ1Q2'), {
+    type: 'bar',
+    data: {
+      labels: ['Q1 (Jan–Mar)', 'Q2 (Abr–Jun)'],
+      datasets: [{ data: [+q1a.toFixed(2), +q2a.toFixed(2)], backgroundColor: ['#6212B3', '#61DD75'], borderRadius: 8, borderSkipped: false }]
+    },
+    options: {
+      responsive: true, aspectRatio: 2, layout: { padding: { top: 24 } },
+      plugins: { legend: { display: false }, datalabels: DL_BAR_V, tooltip: { callbacks: { label: ctx => ' ' + ctx.parsed.y.toFixed(1) + '%' } } },
+      scales: {
+        x: { ticks: { color: tickColor }, grid: { color: gridColor } },
+        y: { ticks: { color: tickColor, callback: v => v + '%' }, grid: { color: gridColor }, suggestedMin: 0 }
+      }
+    }
+  });
+
+  const allSects = [...new Set(ar.map(d => d.setor))].sort();
+  const q1bs = allSects.map(s => { const v = q1d.filter(d => d.setor === s).map(d => d.perc); return v.length ? +avg(v).toFixed(2) : null; });
+  const q2bs = allSects.map(s => { const v = q2d.filter(d => d.setor === s).map(d => d.perc); return v.length ? +avg(v).toFixed(2) : null; });
+
+  if (chartQ1Q2Setor) chartQ1Q2Setor.destroy();
+  chartQ1Q2Setor = new Chart(document.getElementById('chartQ1Q2Setor'), {
+    type: 'bar',
+    data: {
+      labels: allSects,
+      datasets: [
+        { label: 'Q1', data: q1bs, backgroundColor: '#6212B3', borderRadius: 4, borderSkipped: false, datalabels: DL_OFF },
+        { label: 'Q2', data: q2bs, backgroundColor: '#61DD75', borderRadius: 4, borderSkipped: false, datalabels: DL_OFF }
+      ]
+    },
+    options: {
+      responsive: true, aspectRatio: 2, layout: { padding: { top: 8 } },
+      plugins: {
+        legend: { position: 'top', align: 'end', labels: { color: '#b5b5b5', font: { size: 10 }, boxWidth: 10, padding: 12 } },
+        datalabels: DL_OFF,
+        tooltip: { callbacks: { label: ctx => ' ' + ctx.dataset.label + ': ' + (ctx.parsed.y !== null ? ctx.parsed.y.toFixed(1) + '%' : '—') } }
+      },
+      scales: {
+        x: { ticks: { color: tickColor }, grid: { color: gridColor } },
+        y: { ticks: { color: tickColor, callback: v => v + '%' }, grid: { color: gridColor }, suggestedMin: 0 }
+      }
+    }
+  });
+}
+
+// ─── ALERTAS SECTION ──────────────────────────────────────────────────────────
+function buildAlertasSection(data) {
+  const ar = raw.filter(d => !excluded.has(d.nome));
+  const allPpl = [...new Set(ar.map(d => d.nome))];
+
+  // 1. Consecutive decline 2+ months in last 3
+  const declines = allPpl.map(nome => {
+    const rows = MONTHS.map(m => ar.find(d => d.nome === nome && d.mes === m)).filter(Boolean);
+    if (rows.length < 3) return null;
+    const last3 = rows.slice(-3);
+    let dec = 0;
+    for (let i = 1; i < last3.length; i++) { if (last3[i].perc < last3[i-1].perc) dec++; }
+    if (dec < 2) return null;
+    return { nome, setor: last3[last3.length-1].setor, rows: last3 };
+  }).filter(Boolean).sort((a, b) => {
+    const da = a.rows[0].perc - a.rows[a.rows.length-1].perc;
+    const db = b.rows[0].perc - b.rows[b.rows.length-1].perc;
+    return db - da;
+  });
+
+  const dw = document.getElementById('alert-decline-wrap');
+  if (!declines.length) {
+    dw.innerHTML = '<p style="color:#61DD75;padding:16px;font-size:0.85rem">✓ Nenhuma queda consecutiva detectada.</p>';
+  } else {
+    dw.innerHTML = '<p style="font-size:0.72rem;color:#6b6b6b;margin-bottom:10px">' +
+      declines.length + ' colaborador' + (declines.length > 1 ? 'es' : '') + ' em queda nos últimos 3 meses</p>' +
+      '<table><thead><tr><th>Nome</th><th>Setor</th><th>Últimos 3 meses</th></tr></thead><tbody>' +
+      declines.map(r =>
+        '<tr>' +
+        '<td style="font-weight:500">' + r.nome.split(' ').slice(0,2).join(' ') + '</td>' +
+        '<td><span class="badge ' + sectorBadge(r.setor) + '">' + r.setor + '</span></td>' +
+        '<td>' + r.rows.map(d => '<span style="font-size:0.78rem;color:' + percColor(d.perc) + ';font-weight:600">' + d.mes.slice(0,3) + ' ' + d.perc.toFixed(0) + '%</span>').join(' → ') + '</td>' +
+        '</tr>'
+      ).join('') + '</tbody></table>';
+  }
+
+  // 2. Big drop >= 15pp last 2 months
+  const aw = MONTHS.filter(m => ar.some(d => d.mes === m));
+  const dropWrap = document.getElementById('alert-drop-wrap');
+  if (aw.length < 2) {
+    dropWrap.innerHTML = '<p style="color:#6b6b6b;padding:16px">Necessário ao menos 2 meses.</p>';
+  } else {
+    const mL = aw[aw.length-1], mP = aw[aw.length-2];
+    const drops = allPpl.map(nome => {
+      const curr = ar.find(d => d.nome === nome && d.mes === mL);
+      const prev = ar.find(d => d.nome === nome && d.mes === mP);
+      if (!curr || !prev) return null;
+      const drop = prev.perc - curr.perc;
+      return drop >= 15 ? { nome, setor: curr.setor, prev: prev.perc, curr: curr.perc, drop } : null;
+    }).filter(Boolean).sort((a, b) => b.drop - a.drop);
+
+    if (!drops.length) {
+      dropWrap.innerHTML = '<p style="color:#61DD75;padding:16px;font-size:0.85rem">✓ Nenhuma queda brusca em ' + mL + '.</p>';
+    } else {
+      dropWrap.innerHTML = '<p style="font-size:0.72rem;color:#6b6b6b;margin-bottom:10px">' + mP + ' → ' + mL + ' · quedas ≥15pp</p>' +
+        '<table><thead><tr><th>Nome</th><th>' + mP + '</th><th>' + mL + '</th><th>Queda</th></tr></thead><tbody>' +
+        drops.map(r =>
+          '<tr>' +
+          '<td style="font-weight:500">' + r.nome.split(' ').slice(0,2).join(' ') + '</td>' +
+          '<td style="color:#9a9a9a">' + r.prev.toFixed(1) + '%</td>' +
+          '<td style="color:#fc8181">' + r.curr.toFixed(1) + '%</td>' +
+          '<td style="color:#fc8181;font-weight:700">-' + r.drop.toFixed(1) + 'pp</td>' +
+          '</tr>'
+        ).join('') + '</tbody></table>';
+    }
+  }
+
+  // 3. Continuous risk: below 80% last 3 months
+  const l3m = MONTHS.slice(-3);
+  const riskList = allPpl.map(nome => {
+    const ents = ar.filter(d => d.nome === nome && l3m.includes(d.mes));
+    if (ents.length < 2 || !ents.every(d => d.perc < 80)) return null;
+    return { nome, setor: ents[0].setor, ents };
+  }).filter(Boolean).sort((a, b) => avg(a.ents.map(d => d.perc)) - avg(b.ents.map(d => d.perc)));
+
+  const rw = document.getElementById('alert-risk-wrap');
+  if (!riskList.length) {
+    rw.innerHTML = '<p style="color:#61DD75;padding:16px;font-size:0.85rem">✓ Nenhum colaborador abaixo de 80% nos 3 últimos meses.</p>';
+  } else {
+    rw.innerHTML = '<p style="font-size:0.72rem;color:#6b6b6b;margin-bottom:10px">' +
+      riskList.length + ' colaborador' + (riskList.length > 1 ? 'es' : '') + ' em risco contínuo · ' + l3m.join(', ') + '</p>' +
+      '<table><thead><tr><th>Nome</th><th>Setor</th><th>Média</th>' +
+      l3m.map(m => '<th>' + m.slice(0,3) + '</th>').join('') + '</tr></thead><tbody>' +
+      riskList.map(r => {
+        const avgR = avg(r.ents.map(d => d.perc));
+        return '<tr>' +
+          '<td style="font-weight:500">' + r.nome.split(' ').slice(0,2).join(' ') + '</td>' +
+          '<td><span class="badge ' + sectorBadge(r.setor) + '">' + r.setor + '</span></td>' +
+          '<td style="color:#fc8181;font-weight:700">' + avgR.toFixed(1) + '%</td>' +
+          l3m.map(m => { const e = r.ents.find(d => d.mes === m); return '<td style="color:' + (e ? percColor(e.perc) : '#6b6b6b') + '">' + (e ? e.perc.toFixed(0) + '%' : '—') + '</td>'; }).join('') +
+          '</tr>';
+      }).join('') + '</tbody></table>';
+  }
+}
+
+// ─── HEATMAP SECTION ──────────────────────────────────────────────────────────
+let hmActiveTab = 'colab';
+
+function cellColor(p) {
+  if (p === null) return { bg: 'rgba(28,28,28,0.9)', fg: '#3a3a3a' };
+  if (p >= 120)  return { bg: 'rgba(97,221,117,.85)',  fg: '#0a0a0a' };
+  if (p >= 100)  return { bg: 'rgba(97,221,117,.42)',  fg: 'rgba(255,255,255,.9)' };
+  if (p >=  90)  return { bg: 'rgba(177,134,255,.58)', fg: 'rgba(255,255,255,.9)' };
+  if (p >=  80)  return { bg: 'rgba(236,201,75,.52)',  fg: 'rgba(255,255,255,.9)' };
+  if (p >=  60)  return { bg: 'rgba(237,137,54,.52)',  fg: 'rgba(255,255,255,.9)' };
+  return              { bg: 'rgba(252,129,129,.62)',  fg: 'rgba(255,255,255,.9)' };
+}
+
+function sn(n) { const p = n.split(' '); return p[0] + (p.length > 1 ? ' ' + p[p.length-1] : ''); }
+
+function switchHmTab(tab) {
+  hmActiveTab = tab;
+  document.querySelectorAll('.hm-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('hm-tab-' + tab).classList.add('active');
+  buildHeatmapSection();
+}
+
+function buildHeatmapSection() {
+  const activeNames = isActiveFilterOn() ? getActiveNames() : null;
+  const activeRaw = raw.filter(d => !excluded.has(d.nome) && (!activeNames || activeNames.has(d.nome)));
+
+  if (hmActiveTab === 'colab') {
+    document.getElementById('hm-subtitle').textContent =
+      'Todos os colaboradores ordenados pela média decrescente · 6 meses completos';
+    buildHeatmapColab(activeRaw);
+  } else {
+    document.getElementById('hm-subtitle').textContent =
+      'Média de performance por setor × mês · 6 meses completos';
+    buildHeatmapSetor(activeRaw);
+  }
+}
+
+function buildHeatmapColab(activeRaw) {
+  const byName = {};
+  activeRaw.forEach(d => {
+    if (!byName[d.nome]) byName[d.nome] = { setor: d.setor, percs: [] };
+    byName[d.nome].percs.push(d.perc);
+  });
+  const sorted = Object.entries(byName)
+    .map(([nome, v]) => ({ nome, setor: v.setor, avg: avg(v.percs) }))
+    .sort((a, b) => b.avg - a.avg);
+
+  let html = `<table class="heatmap-table"><thead><tr>
+    <th class="hm-name-h">Colaborador</th>
+    <th class="hm-name-h" style="color:#6b6b6b;font-size:0.65rem">Setor</th>`;
+  MONTHS.forEach(m => { html += `<th class="hm-mes">${m.slice(0,3)}</th>`; });
+  html += `<th class="hm-mes" style="color:#B186FF">Média</th></tr></thead><tbody>`;
+
+  sorted.forEach(({ nome, setor, avg: avgVal }) => {
+    const percs = MONTHS.map(m => {
+      const rec = activeRaw.find(d => d.nome === nome && d.mes === m);
+      return rec ? rec.perc : null;
+    });
+    html += `<tr>
+      <td class="hm-name" title="${nome}">${sn(nome)}</td>
+      <td style="padding:2px 10px 2px 0;white-space:nowrap"><span class="badge ${sectorBadge(setor)}" style="font-size:0.65rem">${setor}</span></td>`;
+    percs.forEach(p => {
+      const { bg, fg } = cellColor(p);
+      const label = p !== null ? p.toFixed(0) + '%' : '–';
+      html += `<td class="hm-cell" style="background:${bg};color:${fg}" title="${nome}: ${label}">${label}</td>`;
+    });
+    const { bg: abg, fg: afg } = cellColor(avgVal);
+    html += `<td class="hm-cell" style="background:${abg};color:${afg};font-size:0.7rem">${avgVal.toFixed(0)}%</td></tr>`;
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('heatmap-wrap').innerHTML = html;
+}
+
+function buildHeatmapSetor(activeRaw) {
+  const SECTOR_LIST = [...new Set(raw.map(d => d.setor))].sort();
+
+  // avg per sector per month
+  const bySetor = {};
+  SECTOR_LIST.forEach(s => { bySetor[s] = {}; MONTHS.forEach(m => { bySetor[s][m] = null; }); });
+  activeRaw.forEach(d => {
+    if (!bySetor[d.setor]) bySetor[d.setor] = {};
+    if (!bySetor[d.setor][d.mes]) bySetor[d.setor][d.mes] = [];
+    if (!Array.isArray(bySetor[d.setor][d.mes])) bySetor[d.setor][d.mes] = [d.perc];
+    else bySetor[d.setor][d.mes].push(d.perc);
+  });
+
+  // Compute avgs and sort sectors by overall avg desc
+  const setorStats = SECTOR_LIST.map(s => {
+    const monthAvgs = MONTHS.map(m => {
+      const v = bySetor[s][m];
+      return Array.isArray(v) && v.length ? avg(v) : null;
+    });
+    const valid = monthAvgs.filter(v => v !== null);
+    return { setor: s, monthAvgs, overallAvg: valid.length ? avg(valid) : 0 };
+  }).sort((a, b) => b.overallAvg - a.overallAvg);
+
+  let html = `<table class="heatmap-table"><thead><tr>
+    <th class="hm-name-h">Setor</th>`;
+  MONTHS.forEach(m => { html += `<th class="hm-mes">${m.slice(0,3)}</th>`; });
+  html += `<th class="hm-mes" style="color:#B186FF">Média</th></tr></thead><tbody>`;
+
+  setorStats.forEach(({ setor, monthAvgs, overallAvg }) => {
+    html += `<tr>
+      <td style="padding:2px 10px 2px 0;white-space:nowrap"><span class="badge ${sectorBadge(setor)}">${setor}</span></td>`;
+    monthAvgs.forEach(p => {
+      const { bg, fg } = cellColor(p);
+      const label = p !== null ? p.toFixed(0) + '%' : '–';
+      const title = setor + ' · ' + label;
+      html += `<td class="hm-cell" style="background:${bg};color:${fg};width:54px" title="${title}">${label}</td>`;
+    });
+    const { bg: abg, fg: afg } = cellColor(overallAvg);
+    html += `<td class="hm-cell" style="background:${abg};color:${afg};font-size:0.7rem">${overallAvg.toFixed(0)}%</td></tr>`;
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('heatmap-wrap').innerHTML = html;
+}
+
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+render();
+
+</script>
+</div><!--main-scroll-->
+</div><!--main-wrap-->
+</div><!--app-->
+
+<!-- ─── MODAL POPUP ─────────────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="kpiModal" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box" id="modalBox">
+    <div class="modal-header">
+      <span class="modal-title" id="modalTitle"></span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-count" id="modalCount"></div>
+    <div class="modal-list" id="modalList"></div>
+  </div>
+</div>
+</body>
+</html>

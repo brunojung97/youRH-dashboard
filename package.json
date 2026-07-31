@@ -1,0 +1,20 @@
+{
+  "name": "youRH-dashboard",
+  "version": "1.0.0",
+  "description": "Painel de Performance YouRH — Railway Edition",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "hash": "node scripts/hash-password.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.6",
+    "express": "^4.18.2",
+    "googleapis": "^140.0.0",
+    "jsonwebtoken": "^9.0.2"
+  }
+}

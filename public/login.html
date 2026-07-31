@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YouRH — Entrar</title>
+<link rel="preconnect" href="https://api.fontshare.com">
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'General Sans', 'Segoe UI', sans-serif;
+    background: #0a0a0a;
+    color: #e2e8f0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .card {
+    background: #161616;
+    border: 1px solid #2e2e2e;
+    border-radius: 16px;
+    padding: 48px 40px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 32px;
+  }
+  .logo-mark {
+    width: 36px; height: 36px;
+    background: #61DD75;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 700; color: #0a0a0a;
+  }
+  .logo-text {
+    font-size: 1.1rem; font-weight: 700; color: #fff; letter-spacing: 0.5px;
+  }
+  .logo-sub { font-size: 0.72rem; color: #6b6b6b; letter-spacing: 0.05em; text-transform: uppercase; }
+
+  h2 {
+    font-size: 1.4rem; font-weight: 700; color: #fff;
+    margin-bottom: 6px;
+  }
+  .subtitle { font-size: 0.85rem; color: #9a9a9a; margin-bottom: 32px; }
+
+  .field { margin-bottom: 20px; }
+  label { display: block; font-size: 0.72rem; color: #9a9a9a; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  input {
+    width: 100%;
+    background: #1c1c1c;
+    border: 1px solid #2e2e2e;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 0.9rem;
+    color: #e2e8f0;
+    outline: none;
+    transition: border-color 0.2s;
+    font-family: inherit;
+  }
+  input:focus { border-color: #61DD75; }
+  input::placeholder { color: #4a4a4a; }
+
+  .btn {
+    width: 100%;
+    background: #61DD75;
+    color: #0a0a0a;
+    border: none;
+    border-radius: 8px;
+    padding: 13px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background 0.2s, transform 0.1s;
+    font-family: inherit;
+    letter-spacing: 0.02em;
+  }
+  .btn:hover { background: #4ec962; }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { background: #2e2e2e; color: #6b6b6b; cursor: not-allowed; }
+
+  .error {
+    background: rgba(252,129,129,0.1);
+    border: 1px solid rgba(252,129,129,0.3);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.83rem;
+    color: #fc8181;
+    margin-bottom: 16px;
+    display: none;
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid #0a0a0a;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .footer { text-align: center; margin-top: 28px; font-size: 0.72rem; color: #4a4a4a; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-mark">Y</div>
+    <div>
+      <div class="logo-text">YouRH</div>
+      <div class="logo-sub">Painel de Performance</div>
+    </div>
+  </div>
+
+  <h2>Bem-vindo</h2>
+  <p class="subtitle">Acesse com suas credenciais para continuar.</p>
+
+  <div class="error" id="error-msg"></div>
+
+  <form id="login-form">
+    <div class="field">
+      <label for="email">E-mail</label>
+      <input type="email" id="email" placeholder="seu@email.com" required autocomplete="email">
+    </div>
+    <div class="field">
+      <label for="password">Senha</label>
+      <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password">
+    </div>
+    <button class="btn" type="submit" id="btn-submit">Entrar</button>
+  </form>
+
+  <div class="footer">YouRH © 2026 — Acesso restrito</div>
+</div>
+
+<script>
+  const form    = document.getElementById('login-form');
+  const errBox  = document.getElementById('error-msg');
+  const btn     = document.getElementById('btn-submit');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errBox.style.display = 'none';
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Entrando…';
+
+    try {
+      const res = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: document.getElementById('email').value.trim(),
+          password: document.getElementById('password').value,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        errBox.textContent = data.error || 'Erro ao fazer login';
+        errBox.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Entrar';
+        return;
+      }
+
+      // Sucesso — redireciona para o dashboard
+      window.location.href = '/';
+    } catch {
+      errBox.textContent = 'Erro de conexão. Tente novamente.';
+      errBox.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Entrar';
+    }
+  });
+</script>
+</body>
+</html>
