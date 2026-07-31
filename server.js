@@ -244,7 +244,8 @@ function requireAdmin(req, res, next) {
 // ─── FILTRAGEM POR PAPEL ──────────────────────────────────────────────────────
 function filterByRole(data, user) {
   switch (user.role) {
-    case 'rh_admin':   return data;
+    case 'rh_admin':
+    case 'direcao':    return data;
     case 'gestor':     return data.filter(d => d.setor === user.setor);
     case 'colaborador':return data.filter(d => d.nome === user.nome);
     default:           return [];
@@ -326,8 +327,8 @@ app.post('/api/admin/users', requireAuthAPI, requireAdmin, async (req, res) => {
   if (!email || !nome || !role || !password) {
     return res.status(400).json({ error: 'Campos obrigatórios: email, nome, role, password' });
   }
-  if (!['rh_admin', 'gestor', 'colaborador'].includes(role)) {
-    return res.status(400).json({ error: 'Role inválido. Use: rh_admin | gestor | colaborador' });
+  if (!['rh_admin', 'direcao', 'gestor', 'colaborador'].includes(role)) {
+    return res.status(400).json({ error: 'Role inválido. Use: rh_admin | direcao | gestor | colaborador' });
   }
   if (role === 'gestor' && !setor) {
     return res.status(400).json({ error: 'Gestor precisa de setor definido' });
