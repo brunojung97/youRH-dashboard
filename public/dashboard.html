@@ -1697,15 +1697,17 @@ function buildAlertasSection(data) {
   const ar = raw.filter(d => !excluded.has(d.nome));
   const allPpl = [...new Set(ar.map(d => d.nome))];
 
-  // 1. Consecutive decline 2+ months in last 3
+  // 1. Consecutive decline — obrigatório nos 3 últimos meses do calendário
+  const last3Cal = MONTHS.slice(-3); // ex: ["Abril","Maio","Junho"]
   const declines = allPpl.map(nome => {
-    const rows = MONTHS.map(m => ar.find(d => d.nome === nome && d.mes === m)).filter(Boolean);
-    if (rows.length < 3) return null;
-    const last3 = rows.slice(-3);
+    // Busca dado exatamente nesses 3 meses (null se ausente)
+    const rows = last3Cal.map(m => ar.find(d => d.nome === nome && d.mes === m) || null);
+    // Exige dado nos 3 meses — quem não tem (desligados, etc.) sai
+    if (rows.some(r => !r)) return null;
     let dec = 0;
-    for (let i = 1; i < last3.length; i++) { if (last3[i].perc < last3[i-1].perc) dec++; }
-    if (dec < 2) return null;
-    return { nome, setor: last3[last3.length-1].setor, rows: last3 };
+    for (let i = 1; i < rows.length; i++) { if (rows[i].perc < rows[i-1].perc) dec++; }
+    if (dec < 2) return null; // precisa de 2 quedas consecutivas (A→B↓ e B→C↓)
+    return { nome, setor: rows[2].setor, rows };
   }).filter(Boolean).sort((a, b) => {
     const da = a.rows[0].perc - a.rows[a.rows.length-1].perc;
     const db = b.rows[0].perc - b.rows[b.rows.length-1].perc;
@@ -1717,8 +1719,8 @@ function buildAlertasSection(data) {
     dw.innerHTML = '<p style="color:#61DD75;padding:16px;font-size:0.85rem">✓ Nenhuma queda consecutiva detectada.</p>';
   } else {
     dw.innerHTML = '<p style="font-size:0.72rem;color:#6b6b6b;margin-bottom:10px">' +
-      declines.length + ' colaborador' + (declines.length > 1 ? 'es' : '') + ' em queda nos últimos 3 meses</p>' +
-      '<table><thead><tr><th>Nome</th><th>Setor</th><th>Últimos 3 meses</th></tr></thead><tbody>' +
+      declines.length + ' colaborador' + (declines.length > 1 ? 'es' : '') + ' em queda · ' + last3Cal.join(', ') + '</p>' +
+      '<table><thead><tr><th>Nome</th><th>Setor</th><th>' + last3Cal.join(' → ') + '</th></tr></thead><tbody>' +
       declines.map(r =>
         '<tr>' +
         '<td style="font-weight:500">' + r.nome.split(' ').slice(0,2).join(' ') + '</td>' +
