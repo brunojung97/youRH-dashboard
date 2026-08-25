@@ -375,14 +375,7 @@
         <option value="Q1">Q1 — Jan · Fev · Mar</option>
         <option value="Q2">Q2 — Abr · Mai · Jun</option>
       </optgroup>
-      <optgroup label="── Meses">
-        <option value="Janeiro">Janeiro</option>
-        <option value="Fevereiro">Fevereiro</option>
-        <option value="Março">Março</option>
-        <option value="Abril">Abril</option>
-        <option value="Maio">Maio</option>
-        <option value="Junho">Junho</option>
-      </optgroup>
+      <optgroup label="── Meses"><!-- preenchido dinamicamente pelo JS --></optgroup>
     </select>
   </div>
   <div class="filter-group">
@@ -690,7 +683,52 @@ async function logout() {
 // Normalize sector names
 raw.forEach(d => { d.setor = d.setor.replace('Tecnologia','Tech'); });
 
-const MONTHS = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho"];
+// ─── NORMALIZAÇÃO DE NOMES ────────────────────────────────────────────────────
+// Se "João" e "João Silva" coexistem, substitui "João" por "João Silva" em todo raw
+(function normalizeNames() {
+  const firstToFull = {};
+  raw.forEach(d => {
+    const parts = (d.nome || '').trim().split(/\s+/);
+    if (parts.length > 1) {
+      const key = parts[0].toLowerCase();
+      // Prefere o nome completo mais longo se houver conflito
+      if (!firstToFull[key] || d.nome.length > firstToFull[key].length) {
+        firstToFull[key] = d.nome;
+      }
+    }
+  });
+  raw.forEach(d => {
+    const parts = (d.nome || '').trim().split(/\s+/);
+    if (parts.length === 1) {
+      const full = firstToFull[d.nome.toLowerCase()];
+      if (full) d.nome = full;
+    }
+  });
+})();
+
+// ─── MESES DINÂMICOS ──────────────────────────────────────────────────────────
+const MONTHS_ORDER = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+                      "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const MONTHS = MONTHS_ORDER.filter(m => raw.some(d => d.mes === m));
+
+// Atualiza período no cabeçalho
+(function() {
+  const el = document.querySelector('header span');
+  if (el && MONTHS.length) el.textContent = MONTHS[0] + ' – ' + MONTHS[MONTHS.length-1] + ' 2026';
+})();
+
+// Popula meses individuais no filtro dinamicamente
+(function() {
+  const sel = document.getElementById('filter-month');
+  const grp = sel.querySelector('optgroup[label="── Meses"]');
+  if (!grp) return;
+  grp.innerHTML = '';
+  MONTHS.forEach(m => {
+    const o = document.createElement('option');
+    o.value = m; o.textContent = m;
+    grp.appendChild(o);
+  });
+})();
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 function avg(arr) { return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
@@ -737,9 +775,10 @@ function onActiveToggle() {
   lbl.classList.toggle('on', on);
   if (on) {
     const count = getActiveNames().size;
-    badge.textContent = count + ' ativos';
-    badge.classList.add('visible');
+    lbl.textContent = 'Apenas Ativos · ' + count;
+    badge.classList.remove('visible');
   } else {
+    lbl.textContent = 'Colaborador Ativo';
     badge.classList.remove('visible');
   }
   render();
