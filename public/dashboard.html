@@ -347,8 +347,8 @@
 </span>    </div>
   </nav>
   <div class="sidebar-footer">
-    Dados: Jan – Jun 2026<br>
-    Última atualiz.: Jul 2026
+    <span id="sidebar-period">Dados: Jan – Jun 2026</span><br>
+    <span id="sidebar-update">Última atualiz.: Jul 2026</span>
   </div>
 </aside>
 <div class="main-wrap">
@@ -687,8 +687,9 @@ const NAME_FIXES = {
   'Marcia':           'Márcia Dos Santos Maroniene',
   'Márcia':           'Márcia Dos Santos Maroniene',
   'Thaisi':           'Thaisi Aragão',
-  'Joao':             'Joao Bornaske',
-  'João':             'Joao Bornaske',
+  'Joao':             'João Bornaske',
+  'João':             'João Bornaske',
+  'Joao Bornaske':    'João Bornaske',
 };
 raw.forEach(d => {
   d.setor = d.setor.replace('Tecnologia','Tech');
@@ -724,10 +725,17 @@ const MONTHS_ORDER = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
                       "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 const MONTHS = MONTHS_ORDER.filter(m => raw.some(d => d.mes === m));
 
-// Atualiza período no cabeçalho
+// Atualiza período no cabeçalho e rodapé lateralmente
 (function() {
+  if (!MONTHS.length) return;
+  const first = MONTHS[0], last = MONTHS[MONTHS.length-1];
+  const abbr = m => m.slice(0,3);
   const el = document.querySelector('header span');
-  if (el && MONTHS.length) el.textContent = MONTHS[0] + ' – ' + MONTHS[MONTHS.length-1] + ' 2026';
+  if (el) el.textContent = first + ' – ' + last + ' 2026';
+  const sp = document.getElementById('sidebar-period');
+  if (sp) sp.textContent = 'Dados: ' + abbr(first) + ' – ' + abbr(last) + ' 2026';
+  const su = document.getElementById('sidebar-update');
+  if (su) su.textContent = 'Última atualiz.: ' + abbr(last) + ' 2026';
 })();
 
 // Popula meses individuais no filtro dinamicamente
