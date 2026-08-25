@@ -1312,7 +1312,13 @@ document.getElementById('collab-select').addEventListener('change', e => buildCo
 // ─── MODAL POPUP ─────────────────────────────────────────────────────────────
 function openKpiModal(type) {
   const last3 = MONTHS.slice(-3);
-  const last3Data = raw.filter(d => last3.includes(d.mes) && !excluded.has(d.nome));
+  const lastMonth = last3[last3.length - 1];
+  const activeNames = isActiveFilterOn() ? getActiveNames() : null;
+  const last3Data = raw.filter(d =>
+    last3.includes(d.mes) &&
+    !excluded.has(d.nome) &&
+    (!activeNames || activeNames.has(d.nome))
+  );
   const names = [...new Set(last3Data.map(d => d.nome))];
 
   const isBelow = type === 'below80';
@@ -1322,6 +1328,8 @@ function openKpiModal(type) {
       return { nome, setor: entries[0].setor, entries };
     })
     .filter(p => {
+      // Exige dado no último mês (colaborador ativo no período)
+      if (!p.entries.find(d => d.mes === lastMonth)) return false;
       if (p.entries.length < 2) return false;
       return isBelow
         ? p.entries.every(d => d.perc < 80)
@@ -1754,7 +1762,8 @@ function buildEmpresaSection() {
 
 // ─── ALERTAS SECTION ──────────────────────────────────────────────────────────
 function buildAlertasSection(data) {
-  const ar = raw.filter(d => !excluded.has(d.nome));
+  const activeNames = isActiveFilterOn() ? getActiveNames() : null;
+  const ar = raw.filter(d => !excluded.has(d.nome) && (!activeNames || activeNames.has(d.nome)));
   const allPpl = [...new Set(ar.map(d => d.nome))];
 
   // 1. Consecutive decline — obrigatório nos 3 últimos meses do calendário
