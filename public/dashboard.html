@@ -681,9 +681,14 @@ async function logout() {
 }
 
 // Normalize sector names
+// Correções de nome explícitas (nome antigo → nome correto)
+const NAME_FIXES = {
+  'Jeferson Chaves': 'Jeferson Chaves Ferreira',
+};
 raw.forEach(d => {
   d.setor = d.setor.replace('Tecnologia','Tech');
   if (d.setor === 'MKT') d.setor = 'Marketing';
+  if (NAME_FIXES[d.nome]) d.nome = NAME_FIXES[d.nome];
 });
 
 // ─── NORMALIZAÇÃO DE NOMES ────────────────────────────────────────────────────
