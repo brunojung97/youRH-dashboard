@@ -683,7 +683,12 @@ async function logout() {
 // Normalize sector names
 // Correções de nome explícitas (nome antigo → nome correto)
 const NAME_FIXES = {
-  'Jeferson Chaves': 'Jeferson Chaves Ferreira',
+  'Jeferson Chaves':  'Jeferson Chaves Ferreira',
+  'Marcia':           'Márcia Dos Santos Maroniene',
+  'Márcia':           'Márcia Dos Santos Maroniene',
+  'Thaisi':           'Thaisi Aragão',
+  'Joao':             'Joao Bornaske',
+  'João':             'Joao Bornaske',
 };
 raw.forEach(d => {
   d.setor = d.setor.replace('Tecnologia','Tech');
