@@ -641,7 +641,7 @@
         <select id="nu-setor" style="width:100%;background:#1c1c1c;border:1px solid #2e2e2e;border-radius:7px;padding:10px 12px;color:#e2e8f0;font-size:0.88rem;font-family:inherit;outline:none;cursor:pointer;">
           <option value="">— selecione —</option>
           <option>CS</option><option>Tech</option><option>Vendas</option>
-          <option>Pré vendas</option><option>MKT</option><option>Conteúdo</option><option>Produto</option>
+          <option>Pré vendas</option><option>Marketing</option><option>Conteúdo</option><option>Produto</option>
         </select>
       </div>
       <div style="margin-bottom:22px;">
@@ -681,7 +681,10 @@ async function logout() {
 }
 
 // Normalize sector names
-raw.forEach(d => { d.setor = d.setor.replace('Tecnologia','Tech'); });
+raw.forEach(d => {
+  d.setor = d.setor.replace('Tecnologia','Tech');
+  if (d.setor === 'MKT') d.setor = 'Marketing';
+});
 
 // ─── NORMALIZAÇÃO DE NOMES ────────────────────────────────────────────────────
 // Se "João" e "João Silva" coexistem, substitui "João" por "João Silva" em todo raw
@@ -741,7 +744,7 @@ function percColor(p) {
 }
 
 function sectorBadge(s) {
-  const map = { 'Vendas':'badge-vendas','Tech':'badge-tech','CS':'badge-cs','Pré vendas':'badge-prevend','MKT':'badge-mkt','Conteúdo':'badge-conte','Produto':'badge-prod' };
+  const map = { 'Vendas':'badge-vendas','Tech':'badge-tech','CS':'badge-cs','Pré vendas':'badge-prevend','Marketing':'badge-mkt','Conteúdo':'badge-conte','Produto':'badge-prod' };
   return map[s] || 'badge-default';
 }
 
@@ -824,7 +827,7 @@ const SECTOR_COLORS = {
   'Tech':       '#9B5DE5',
   'Vendas':     '#38BDF8',
   'Pré vendas': '#FB923C',
-  'MKT':        '#F472B6',
+  'Marketing':  '#F472B6',
   'Conteúdo':   '#34D399',
   'Produto':    '#FACC15',
 };
