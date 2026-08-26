@@ -971,15 +971,17 @@ function buildKPIs(data) {
   const activeMes = [...new Set(data.map(d=>d.mes))].length;
   // ─── Last-3-months persistent KPIs (always from raw, filter-independent)
   const last3 = MONTHS.slice(-3);
+  const lastMonthKpi = last3[last3.length - 1];
   const last3Data = raw.filter(d => last3.includes(d.mes) && !excluded.has(d.nome));
   const last3Names = [...new Set(last3Data.map(d => d.nome))];
   const below80_3m = last3Names.filter(nome => {
     const entries = last3Data.filter(d => d.nome === nome);
-    return entries.length >= 2 && entries.every(d => d.perc < 80);
+    // Exige dado no último mês (ativo) e pelo menos 2 meses todos abaixo de 80%
+    return entries.find(d => d.mes === lastMonthKpi) && entries.length >= 2 && entries.every(d => d.perc < 80);
   }).length;
   const above100_3m = last3Names.filter(nome => {
     const entries = last3Data.filter(d => d.nome === nome);
-    return entries.length >= 2 && entries.every(d => d.perc >= 100);
+    return entries.find(d => d.mes === lastMonthKpi) && entries.length >= 2 && entries.every(d => d.perc >= 100);
   }).length;
   const avgClass = totalAvg>=100?'green':totalAvg>=90?'yellow':totalAvg>=80?'yellow':'red';
 
