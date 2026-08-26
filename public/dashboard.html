@@ -687,14 +687,15 @@ const NAME_FIXES = {
   'Marcia':           'Márcia Dos Santos Maroniene',
   'Márcia':           'Márcia Dos Santos Maroniene',
   'Thaisi':           'Thaisi Aragão',
-  'Joao':             'João Bornaske',
-  'João':             'João Bornaske',
   'Joao Bornaske':    'João Bornaske',
 };
 raw.forEach(d => {
   d.setor = d.setor.replace('Tecnologia','Tech');
   if (d.setor === 'MKT') d.setor = 'Marketing';
   if (NAME_FIXES[d.nome]) d.nome = NAME_FIXES[d.nome];
+  // Casos com mesmo primeiro nome — disambiguação por setor
+  if ((d.nome === 'João' || d.nome === 'Joao') && d.setor === 'CS')      d.nome = 'João Bornaske';
+  if ((d.nome === 'João' || d.nome === 'Joao') && d.setor === 'Produto') d.nome = 'João Varaschin';
 });
 
 // ─── NORMALIZAÇÃO DE NOMES ────────────────────────────────────────────────────
