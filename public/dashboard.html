@@ -127,6 +127,7 @@
   .badge-mkt { background: #521b5e; color: #d6bcfa; }
   .badge-conte { background: #3d2c0a; color: #fbd38d; }
   .badge-prod { background: #3c3060; color: #b794f4; }
+  .badge-fin  { background: #1a3a2a; color: #68d391; }
   .badge-default { background: #2d3748; color: #a0aec0; }
 
   .perf-bar { display: flex; align-items: center; gap: 8px; }
@@ -641,7 +642,7 @@
         <select id="nu-setor" style="width:100%;background:#1c1c1c;border:1px solid #2e2e2e;border-radius:7px;padding:10px 12px;color:#e2e8f0;font-size:0.88rem;font-family:inherit;outline:none;cursor:pointer;">
           <option value="">— selecione —</option>
           <option>CS</option><option>Tech</option><option>Vendas</option>
-          <option>Pré vendas</option><option>Marketing</option><option>Conteúdo</option><option>Produto</option>
+          <option>Pré vendas</option><option>Marketing</option><option>Conteúdo</option><option>Produto</option><option>Financeiro</option>
         </select>
       </div>
       <div style="margin-bottom:22px;">
@@ -763,7 +764,7 @@ function percColor(p) {
 }
 
 function sectorBadge(s) {
-  const map = { 'Vendas':'badge-vendas','Tech':'badge-tech','CS':'badge-cs','Pré vendas':'badge-prevend','Marketing':'badge-mkt','Conteúdo':'badge-conte','Produto':'badge-prod' };
+  const map = { 'Vendas':'badge-vendas','Tech':'badge-tech','CS':'badge-cs','Pré vendas':'badge-prevend','Marketing':'badge-mkt','Conteúdo':'badge-conte','Produto':'badge-prod','Financeiro':'badge-fin' };
   return map[s] || 'badge-default';
 }
 
@@ -847,6 +848,7 @@ const SECTOR_COLORS = {
   'Vendas':     '#38BDF8',
   'Pré vendas': '#FB923C',
   'Marketing':  '#F472B6',
+  'Financeiro': '#68D391',
   'Conteúdo':   '#34D399',
   'Produto':    '#FACC15',
 };
